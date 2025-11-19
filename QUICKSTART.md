@@ -1,25 +1,36 @@
-# Quick Start Guide
+# Quick Start Guide - Telegram Bot
 
-Get your DDVB Case Study Generator running in 10 minutes!
+Get your DDVB Case Study Generator Telegram bot running in 15 minutes!
 
 ## What You'll Need
 
 - ✅ n8n Cloud account (or self-hosted n8n)
+- ✅ Telegram account
 - ✅ Perplexity API key
 - ✅ OpenAI API key (with GPT-4o access)
-- ✅ SMTP credentials (Gmail, Outlook, or custom)
 
-## 5 Simple Steps
+## 6 Simple Steps
 
-### 1️⃣ Import Workflow
+### 1️⃣ Create Telegram Bot
+
+1. Open Telegram and message **@BotFather**
+2. Send command: `/newbot`
+3. Follow prompts to choose bot name and username
+4. Copy the **bot token** (looks like: `123456789:ABCdefGHIjklMNOpqrSTUvwxYZ`)
+
+### 2️⃣ Import Workflow
 
 1. Log into n8n Cloud
 2. Go to **Workflows** → **Import from File**
 3. Upload `workflow/ddvb-case-study-generator.json`
 
-### 2️⃣ Add API Keys
+### 3️⃣ Add API Keys
 
 Configure these credentials in n8n:
+
+**Telegram Bot:**
+- Type: Telegram API
+- Access Token: `YOUR_BOT_TOKEN` (from step 1)
 
 **Perplexity:**
 - Type: Header Auth
@@ -30,64 +41,71 @@ Configure these credentials in n8n:
 - Type: OpenAI API
 - API Key: `YOUR_OPENAI_KEY`
 
-**SMTP (Email):**
-- Gmail: smtp.gmail.com:587 (use App Password!)
-- Outlook: smtp.office365.com:587
-
-### 3️⃣ Link Credentials
+### 4️⃣ Link Credentials
 
 1. Open imported workflow
-2. Click each API node (Perplexity, OpenAI, Email)
-3. Select your credentials from dropdown
+2. Click each API node:
+   - **Telegram Trigger** → Select Telegram credentials
+   - **Perplexity Research** → Select Perplexity credentials
+   - **Generate English Case Study** → Select OpenAI credentials
+   - **Translate to Russian** → Select OpenAI credentials
+   - **Send to Telegram** → Select Telegram credentials
 
-### 4️⃣ Configure Email
-
-In the **"Send Email"** node:
-- Update "From Email" to your email
-- Update "To Email" (or keep dynamic)
-
-### 5️⃣ Activate & Test
+### 5️⃣ Activate Workflow
 
 1. Click **Activate** (toggle at top right)
-2. Open the chat URL shown in Chat Trigger node
-3. Test with (in Russian):
+2. Workflow starts listening for Telegram messages
+
+### 6️⃣ Test Your Bot
+
+1. Open Telegram and find your bot (search for bot username)
+2. Start a chat and send (in English):
    ```
-   Создай кейс DDVB для Sostav.ru о ребрендинге пивоварни "Хмель & Солод"
+   Create a DDVB case study for Sostav.ru about rebranding craft brewery "Hops & Malt".
+   Sales grew 45% after launching the new identity from DDVB.
    ```
+3. Wait ~30-60 seconds
+4. Receive Russian case study in Telegram!
 
 ## Expected Result
 
-You'll receive an email with:
+You'll receive a Telegram message with:
 - ✅ Complete Russian case study
 - ✅ СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ structure
 - ✅ Client and agency quotes
-- ✅ Metadata package
 - ✅ Team composition section
+- ✅ Validation status
 
-## What The Workflow Does
+## Workflow Flow
 
 ```
-User Message (Chat)
+You send English message to Telegram bot
     ↓
-Language Detection (Russian/English)
+Parse Input & Extract Info
     ↓
-Research (Perplexity) - Get company background
+Research (Perplexity) - Get company info
     ↓
-Generate Case Study (OpenAI) - Create Russian content
+Generate English Case Study (OpenAI GPT-4o)
     ↓
-Validate Quality - Check standards compliance
+Translate to Russian (OpenAI GPT-4o with special prompt)
     ↓
-Send Email - Deliver to user
+Validate Quality - Check Russian standards
     ↓
-Chat Response - Confirm completion
+Send to Telegram - Deliver Russian case study to you
 ```
 
 ## Key Features
 
-🇷🇺 **Russian Language**
-- All communication in Russian
-- Input validation ensures Russian-only
-- Case study in professional Russian
+🤖 **Telegram Bot**
+- Easy access from mobile or desktop
+- No email needed
+- Instant delivery
+
+🇬🇧➡️🇷🇺 **English-First Approach**
+- Input in English (easier to write)
+- Generated in English first (better quality)
+- Professionally translated to Russian
+- Russian media standards applied
 
 📊 **Research-Powered**
 - Perplexity finds company info
@@ -96,95 +114,112 @@ Chat Response - Confirm completion
 
 ✍️ **Professional Generation**
 - GPT-4o creates publication-ready content
-- Follows strict Russian media standards
-- Includes mandatory client + agency quotes
+- Follows SITUATION-TASK-SOLUTION structure
+- Mandatory client + agency quotes
+
+🔄 **Translation with Standards**
+- Dedicated translation step
+- Russian quotation marks «кавычки»
+- Em-dashes, number formatting (10 000)
+- Proper брендинг terminology
 
 ✅ **Quality Validated**
-- Character limits checked (title ≤90, text 1500-2000)
-- Russian formatting verified («кавычки», em-dashes)
+- Character limits checked
+- Russian formatting verified
 - DDVB branding confirmed
-
-📧 **Email Delivery**
-- Formatted HTML email
-- Complete case study
-- Metadata package included
 
 ## Troubleshooting
 
-### Workflow not starting?
-- Check if workflow is **Activated** (toggle ON)
-- Verify Chat Trigger has valid webhook ID
+### Bot not responding?
+- Check if workflow is **Activated** (toggle ON in n8n)
+- Verify Telegram bot token is correct
+- Ensure bot username is correct
+- Try sending `/start` to bot first
 
 ### API errors?
 - Confirm API keys are correct (no extra spaces)
 - Check API quota/billing status
 - Verify GPT-4o access for OpenAI
+- Check Perplexity API limits
 
-### Email not sending?
-- Gmail users: Use **App Password**, not regular password
-  - Go to: https://myaccount.google.com/apppasswords
-- Check spam/junk folder
-- Verify SMTP host and port are correct
+### Translation quality issues?
+- Review translation prompt in workflow
+- Check temperature settings (lower = more consistent)
+- Verify Russian formatting requirements
 
-### Case study not in Russian?
-- Check OpenAI node has correct system prompt
-- Verify temperature is 0.7-0.9
-- Ensure GPT-4o model is selected
+### Case study missing elements?
+- Ensure English prompt has clear structure
+- Check SITUATION-TASK-SOLUTION is emphasized
+- Verify quote generation logic
 
 ## Next Steps
 
 📖 **Full Documentation:**
+- [README](README.md) - Complete project overview
 - [Setup Guide](docs/setup-guide.md) - Detailed configuration
 - [Customization](docs/customization.md) - Modify for your needs
-- [System Prompt](prompts/system-prompt.md) - Complete prompt reference
-- [Reference Examples](prompts/reference-examples.md) - Quality case studies
+- [System Prompt](prompts/system-prompt.md) - English prompt reference
+- [Translation Prompt](prompts/translation-prompt.md) - Russian translation guidelines
 
 🔧 **Customize:**
 - Change PR executive name (default: Ilya Morozov)
 - Add DDVB methodology and awards
-- Customize email template branding
 - Add new target publications
+- Customize validation rules
 
-📊 **Integrate:**
-- WordPress auto-posting
-- Slack notifications
-- Airtable logging
-- Google Drive export
+📊 **Monitor:**
+- Check n8n execution logs
+- Monitor API usage and costs
+- Track case study quality
+
+## Example Usage
+
+**You (in English):**
+```
+Create a Forbes Russia case study about DDVB's rebranding work for fintech startup FinTechPro.
+
+After the rebrand, they raised $5M in Series A funding.
+
+The project included:
+- Brand strategy and positioning
+- New visual identity
+- Website design
+- Marketing collateral
+
+Timeline: 3 months
+Team: 5 DDVB designers, 2 strategists
+```
+
+**Bot responds (in Russian):**
+```
+📄 **Кейс DDVB готов!**
+
+[Complete Russian case study with proper formatting, quotes, structure]
+
+---
+
+✅ All quality checks passed
+```
 
 ## Support
 
-Having issues? Check:
-1. n8n execution logs (click on failed node)
-2. [Setup Guide](docs/setup-guide.md) troubleshooting section
-3. n8n Community: https://community.n8n.io/
-
-## File Structure
-
-```
-case-study-generator/
-├── README.md                          # Full project overview
-├── QUICKSTART.md                      # This file
-├── workflow/
-│   └── ddvb-case-study-generator.json # n8n workflow (IMPORT THIS!)
-├── prompts/
-│   ├── system-prompt.md               # Complete system instructions
-│   ├── reference-examples.md          # Quality case study examples
-│   └── editorial-standards.md         # Russian media standards
-└── docs/
-    ├── setup-guide.md                 # Detailed setup instructions
-    └── customization.md               # How to customize workflow
-```
+Having issues?
+1. Check n8n execution logs (click on failed node)
+2. Review [Setup Guide](docs/setup-guide.md) troubleshooting section
+3. Verify all API credentials
+4. Test with simple message first
 
 ## What's Included
 
-✅ **Complete n8n Workflow** with 10 configured nodes
-✅ **System Prompt** with Russian Media Editorial Standards
-✅ **2 Reference Examples** (Сады Придонья, Websoft)
-✅ **Setup Guide** with step-by-step instructions
-✅ **Customization Guide** for advanced modifications
-✅ **Documentation** on Russian formatting and DDVB branding
+✅ **Telegram Bot Integration** - No email needed
+✅ **English Input** - Write requests in English
+✅ **English-First Generation** - Better quality
+✅ **Professional Translation** - Russian media standards
+✅ **Complete Workflow** with 11 nodes
+✅ **Quality Validation** - Automated checks
+✅ **Documentation** - Setup and customization guides
 
-Ready to create professional Russian case studies! 🚀
+Ready to generate professional Russian case studies via Telegram! 📱🇷🇺
 
 ---
 
