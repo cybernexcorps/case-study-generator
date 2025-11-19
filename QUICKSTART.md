@@ -50,9 +50,9 @@ In the **"Send Email"** node:
 
 1. Click **Activate** (toggle at top right)
 2. Open the chat URL shown in Chat Trigger node
-3. Test with:
+3. Test with (in Russian):
    ```
-   Создай кейс DDVB для Sostav.ru о ребрендинге пивоварни
+   Создай кейс DDVB для Sostav.ru о ребрендинге пивоварни "Хмель & Солод"
    ```
 
 ## Expected Result
@@ -84,10 +84,10 @@ Chat Response - Confirm completion
 
 ## Key Features
 
-🌐 **Bilingual Communication**
-- Chat in Russian → Response in Russian
-- Chat in English → Response in English
-- Case study always in Russian
+🇷🇺 **Russian Language**
+- All communication in Russian
+- Input validation ensures Russian-only
+- Case study in professional Russian
 
 📊 **Research-Powered**
 - Perplexity finds company info

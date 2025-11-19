@@ -8,8 +8,8 @@ This n8n workflow acts as Ilya Morozov, Senior PR Executive at DDVB, creating pr
 
 ## Features
 
-- **Chat Interface**: Interactive conversation to gather case study requirements
-- **Bilingual Communication**: Responds in user's language (Russian/English) while always outputting Russian case studies
+- **Chat Interface**: Interactive conversation in Russian to gather case study requirements
+- **Russian Language**: All communication and case studies in Russian only
 - **AI-Powered Research**: Uses Perplexity API to research companies, industries, and context
 - **Professional Generation**: Uses OpenAI GPT-4o to create publication-ready content
 - **Russian Media Standards**: Follows strict СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ structure with character limits
@@ -21,8 +21,8 @@ This n8n workflow acts as Ilya Morozov, Senior PR Executive at DDVB, creating pr
 - Receives user messages via n8n chat interface
 - Handles multi-turn conversations for clarifying questions
 
-### 2. Language Detection & Processing
-- Detects user's communication language
+### 2. Input Validation & Processing
+- Validates input is in Russian
 - Parses case study requirements
 - Identifies missing information
 
@@ -96,18 +96,19 @@ All case studies comply with:
 
 ### Starting a Conversation
 
-Trigger the chat interface and provide case study details. You can write in Russian or English:
+Trigger the chat interface and provide case study details in Russian:
 
-**Russian Example:**
+**Пример:**
 ```
 Создай кейс DDVB для Sostav.ru о ребрендинге крафтовой пивоварни "Хмель & Солод".
 Продажи выросли на 45% после запуска новой айдентики от DDVB.
 ```
 
-**English Example:**
+**Пример с подробностями:**
 ```
-Create a DDVB case study for Forbes Russia about rebranding fintech startup "FinTechPro".
-After DDVB's rebrand, they attracted $5M investment.
+Нужен кейс для Forbes Russia о ребрендинге финтех-стартапа "FinTechPro".
+После ребрендинга от DDVB компания привлекла инвестиции на $5 млн.
+Проект включал разработку новой айдентики, нейминга и позиционирования.
 ```
 
 ### What to Include
