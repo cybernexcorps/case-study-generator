@@ -9,9 +9,9 @@ This n8n workflow acts as Ilya Morozov, Senior PR Executive at DDVB, creating pr
 ## Features
 
 - **Telegram Bot Interface**: Interact via Telegram messenger
-- **English Input**: Send requests in English via Telegram
+- **Russian Input**: Send requests in Russian via Telegram (natural for Russian PR team)
 - **AI-Powered Research**: Uses Perplexity API to research companies, industries, and context
-- **English Generation**: Uses OpenAI GPT-4o to create case study in English first
+- **English Generation**: Internally generates case study in English first (better AI quality)
 - **Professional Translation**: Translates to Russian with proper formatting and terminology
 - **Russian Media Standards**: Follows strict СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ structure with character limits
 - **Telegram Delivery**: Receives completed Russian case study directly in Telegram
@@ -19,15 +19,15 @@ This n8n workflow acts as Ilya Morozov, Senior PR Executive at DDVB, creating pr
 ## Workflow Architecture
 
 ```
-Telegram Message (English input)
+Telegram Message (Russian input from user)
     ↓
-Parse Input & Extract Entities
+Validate Russian Input & Parse Entities
     ↓
-Research (Perplexity) - Get company background in English
+Research (Perplexity) - Translate to English & research
     ↓
 Generate Case Study in English (OpenAI GPT-4o)
     ↓
-Translate to Russian (OpenAI GPT-4o with translation prompt)
+Translate to Russian (OpenAI GPT-4o with specialized prompt)
     ↓
 Validate Russian Quality - Check standards compliance
     ↓
@@ -122,24 +122,24 @@ All case studies comply with:
 
 ### Starting a Conversation
 
-Send a message to your Telegram bot in English:
+Send a message to your Telegram bot in Russian:
 
-**Example:**
+**Пример:**
 ```
-Create a DDVB case study for Sostav.ru about rebranding craft brewery "Hops & Malt".
-Sales grew 45% after launching the new identity from DDVB.
+Создай кейс DDVB для Sostav.ru о ребрендинге крафтовой пивоварни "Хмель & Солод".
+Продажи выросли на 45% после запуска новой айдентики от DDVB.
 ```
 
-**Detailed Example:**
+**Подробный пример:**
 ```
-Need a case study for Forbes Russia about rebranding fintech startup "FinTechPro".
-After DDVB's rebrand, they attracted $5M investment.
-Project included new brand identity, naming, and positioning.
+Нужен кейс для Forbes Russia о ребрендинге финтех-стартапа "FinTechPro".
+После ребрендинга от DDVB компания привлекла инвестиции на $5 млн.
+Проект включал разработку новой айдентики, нейминга и позиционирования.
 ```
 
 ### What to Include
 
-Provide as much detail as possible in English:
+Provide as much detail as possible in Russian:
 - **Client name** and industry
 - **Target publication** (Sostav.ru, Forbes Russia, RBC, VC.ru, etc.)
 - **Project type** (branding, rebranding, packaging, naming, identity)
@@ -182,12 +182,13 @@ case-study-generator/
 
 ## How It Works
 
-### English-First Approach
+### Russian Input with English-First Generation
 
-1. **User sends request in English** via Telegram
-2. **Research in English** using Perplexity API
+1. **User sends request in Russian** via Telegram (natural for Russian PR team)
+2. **Perplexity translates & researches** - converts Russian to English for research
 3. **Generate case study in English** using OpenAI GPT-4o
-   - Easier for AI to maintain quality and structure
+   - Accepts Russian input but generates in English
+   - Better AI quality and structure in English
    - Better handling of quotes and nuance
 4. **Translate to Russian** using specialized translation prompt
    - Professional translation with media standards
@@ -196,21 +197,22 @@ case-study-generator/
 5. **Validate Russian output** for quality
 6. **Deliver via Telegram** in Russian
 
-### Why English-First?
+### Why English-First Generation?
 
 - **Better Quality**: AI generates more consistent, high-quality content in English
-- **Easier Editing**: English drafts easier to review and refine
+- **Natural Input**: Users write in Russian (their native language)
 - **Specialized Translation**: Dedicated translation step ensures proper Russian formatting
 - **Terminology Control**: Translation prompt enforces correct брендинг terminology
 - **Structure Preservation**: SITUATION-TASK-SOLUTION translates cleanly to СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ
+- **Best of Both**: Russian input comfort + English generation quality
 
 ## Telegram Bot Commands
 
 Once your bot is active, users can:
 
-- Send case study requests in plain English
-- Receive Russian case studies instantly
-- No special commands needed - just describe the project
+- Send case study requests in Russian (plain text, natural language)
+- Receive Russian case studies instantly (generated via English for quality)
+- No special commands needed - just describe the project in Russian
 
 ## Customization
 

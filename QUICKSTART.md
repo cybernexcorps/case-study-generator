@@ -59,10 +59,10 @@ Configure these credentials in n8n:
 ### 6️⃣ Test Your Bot
 
 1. Open Telegram and find your bot (search for bot username)
-2. Start a chat and send (in English):
+2. Start a chat and send (in Russian):
    ```
-   Create a DDVB case study for Sostav.ru about rebranding craft brewery "Hops & Malt".
-   Sales grew 45% after launching the new identity from DDVB.
+   Создай кейс DDVB для Sostav.ru о ребрендинге крафтовой пивоварни "Хмель & Солод".
+   Продажи выросли на 45% после запуска новой айдентики от DDVB.
    ```
 3. Wait ~30-60 seconds
 4. Receive Russian case study in Telegram!
@@ -79,15 +79,15 @@ You'll receive a Telegram message with:
 ## Workflow Flow
 
 ```
-You send English message to Telegram bot
+You send Russian message to Telegram bot
     ↓
-Parse Input & Extract Info
+Validate Russian Input & Parse Info
     ↓
-Research (Perplexity) - Get company info
+Research (Perplexity) - Translate to English & research
     ↓
 Generate English Case Study (OpenAI GPT-4o)
     ↓
-Translate to Russian (OpenAI GPT-4o with special prompt)
+Translate to Russian (OpenAI GPT-4o with specialized prompt)
     ↓
 Validate Quality - Check Russian standards
     ↓
@@ -101,9 +101,9 @@ Send to Telegram - Deliver Russian case study to you
 - No email needed
 - Instant delivery
 
-🇬🇧➡️🇷🇺 **English-First Approach**
-- Input in English (easier to write)
-- Generated in English first (better quality)
+🇷🇺➡️🇬🇧➡️🇷🇺 **Russian Input, English Generation**
+- Input in Russian (natural for Russian PR team)
+- Generated in English first (better AI quality)
 - Professionally translated to Russian
 - Russian media standards applied
 
@@ -174,27 +174,27 @@ Send to Telegram - Deliver Russian case study to you
 
 ## Example Usage
 
-**You (in English):**
+**Вы отправляете (на русском):**
 ```
-Create a Forbes Russia case study about DDVB's rebranding work for fintech startup FinTechPro.
+Создай кейс для Forbes Russia о работе DDVB по ребрендингу финтех-стартапа FinTechPro.
 
-After the rebrand, they raised $5M in Series A funding.
+После ребрендинга компания привлекла $5 млн инвестиций серии A.
 
-The project included:
-- Brand strategy and positioning
-- New visual identity
-- Website design
-- Marketing collateral
+Проект включал:
+- Стратегию бренда и позиционирование
+- Новую визуальную айдентику
+- Дизайн сайта
+- Маркетинговые материалы
 
-Timeline: 3 months
-Team: 5 DDVB designers, 2 strategists
+Сроки: 3 месяца
+Команда: 5 дизайнеров DDVB, 2 стратега
 ```
 
-**Bot responds (in Russian):**
+**Бот отвечает (на русском):**
 ```
 📄 **Кейс DDVB готов!**
 
-[Complete Russian case study with proper formatting, quotes, structure]
+[Полный кейс на русском языке с правильным форматированием, цитатами, структурой]
 
 ---
 
@@ -212,8 +212,8 @@ Having issues?
 ## What's Included
 
 ✅ **Telegram Bot Integration** - No email needed
-✅ **English Input** - Write requests in English
-✅ **English-First Generation** - Better quality
+✅ **Russian Input** - Write requests in your native language
+✅ **English-First Generation** - Better AI quality
 ✅ **Professional Translation** - Russian media standards
 ✅ **Complete Workflow** with 11 nodes
 ✅ **Quality Validation** - Automated checks
