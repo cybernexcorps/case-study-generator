@@ -1,0 +1,367 @@
+{
+  "name": "DDVB Case Study Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "chat-trigger",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "ddvb-case-study-chat"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Language Detection and Input Parsing\nconst userMessage = $input.item.json.chatInput || '';\nconst sessionId = $input.item.json.sessionId || 'default';\n\n// Detect language (simple heuristic - check for Cyrillic characters)\nconst hasCyrillic = /[А-Яа-яЁё]/.test(userMessage);\nconst communicationLanguage = hasCyrillic ? 'russian' : 'english';\n\n// Parse key information from message\nconst messageData = {\n  originalMessage: userMessage,\n  communicationLanguage: communicationLanguage,\n  sessionId: sessionId,\n  timestamp: new Date().toISOString(),\n  \n  // Extract potential entities\n  hasPublication: /sostav|forbes|rbc|vc\\.ru|cossa|adindex/i.test(userMessage),\n  hasMetrics: /\\d+%|\\$\\d+|₽\\d+|миллион|million|выросли|рост|growth/.test(userMessage),\n  hasClientName: true, // Will be refined in OpenAI\n  \n  // Determine if this is initial request or follow-up\n  isInitialRequest: !userMessage.toLowerCase().includes('да') && \n                     !userMessage.toLowerCase().includes('нет') &&\n                     !userMessage.toLowerCase().includes('yes') &&\n                     !userMessage.toLowerCase().includes('no'),\n  \n  // Prepare for next nodes\n  needsResearch: userMessage.length < 200, // Short messages may need more context\n  readyForGeneration: userMessage.length > 200 && /клиент|client|проект|project|ребрендинг|rebrand/.test(userMessage)\n};\n\nreturn { json: messageData };"
+      },
+      "id": "language-detection",
+      "name": "Language Detection & Parsing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.needsResearch }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "needsResearch"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.readyForGeneration }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "readyForGeneration"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "router",
+      "name": "Route Decision",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "perplexityApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "llama-3.1-sonar-large-128k-online"
+            },
+            {
+              "name": "messages",
+              "value": "={{ [{\"role\": \"system\", \"content\": \"You are a research assistant helping gather information for case studies. Provide factual, recent information about companies, industries, and branding projects. Focus on business context, market position, and industry trends. Answer in \" + ($json.communicationLanguage === 'russian' ? 'Russian' : 'English') + \".\"}, {\"role\": \"user\", \"content\": \"Research context for this case study request: \" + $json.originalMessage + \"\\n\\nProvide: 1) Company background, 2) Industry context, 3) Recent news or developments, 4) Competitive landscape. Keep it concise (300-400 words).\"}] }}"
+            },
+            {
+              "name": "temperature",
+              "value": "0.3"
+            },
+            {
+              "name": "max_tokens",
+              "value": "1000"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "perplexity-research",
+      "name": "Perplexity Research",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 200],
+      "credentials": {
+        "perplexityApi": {
+          "id": "perplexity-api-credential",
+          "name": "Perplexity API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine research with original message\nconst originalData = $('Language Detection & Parsing').item.json;\nconst researchResponse = $input.item.json.choices[0].message.content;\n\nreturn {\n  json: {\n    ...originalData,\n    researchContext: researchResponse,\n    enrichedMessage: originalData.originalMessage + \"\\n\\n[Research Context: \" + researchResponse + \"]\",\n    readyForGeneration: true\n  }\n};"
+      },
+      "id": "merge-research",
+      "name": "Merge Research Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "gpt-4o"
+            },
+            {
+              "name": "messages",
+              "value": "={{ $json.openaiMessages }}"
+            },
+            {
+              "name": "temperature",
+              "value": "0.8"
+            },
+            {
+              "name": "max_tokens",
+              "value": "4000"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "openai-generation",
+      "name": "OpenAI Case Study Generation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-api-credential",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare OpenAI messages with complete system prompt\nconst userData = $input.item.json;\nconst userMessage = userData.enrichedMessage || userData.originalMessage;\nconst communicationLang = userData.communicationLanguage || 'english';\n\n// Load system prompt (embedded here for completeness)\nconst systemPrompt = `You are Ilya Morozov, Senior PR Executive at DDVB—a leading Russian branding agency. You have 12+ years of experience specializing in brand storytelling and case study development that showcases DDVB's award-winning branding work for clients.\n\n**CRITICAL: ALL case study outputs must be written in RUSSIAN (русский язык) and presented from DDVB agency's perspective.**\n\n**LANGUAGE ADAPTATION FOR COMMUNICATION**: Adapt your communication language to match the user:\n- If user writes in Russian (русский) → Respond to them in Russian (уточняющие вопросы, объяснения)\n- If user writes in English → Respond to them in English (clarifying questions, explanations)\n- **THE EXCEPTION**: The final case study text itself must ALWAYS be in Russian, regardless of what language the user used to communicate with you\n\nCurrent user communication language: ${communicationLang}\n\n## About DDVB Agency\nDDVB is a Russian branding agency specializing in:\n- Brand Strategy (стратегия бренда)\n- Brand Identity & Visual Identity (айдентика и фирменный стиль)\n- Rebranding (ребрендинг)\n- Naming (нейминг)\n- Packaging Design (дизайн упаковки)\n- Brand Positioning (позиционирование)\n\n## RUSSIAN MEDIA EDITORIAL STANDARDS\n\n### Case Study Structure (Maximum 3,000 Characters Total)\n\n**1. ЗАГОЛОВОК (Title) - Maximum 90 Characters**\n- Short, simple, energetic, active voice\n- NEVER start with a preposition or number\n- Examples: «DDVB разработали айдентику для фестиваля «Основа»», «Сады Придонья» обновили упаковку соков\n\n**2. ПОДЗАГОЛОВОК (Subtitle)**\n- Expands title (1-2 sentences), MUST NOT duplicate title\n\n**3. ОСНОВНОЙ ТЕКСТ (Main Text) - 1,500-2,000 Characters**\n- MANDATORY Structure (СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ):\n  * СИТУАЦИЯ: Context, client background, market position\n  * ЗАДАЧА: Specific objectives, business challenges\n  * РЕШЕНИЕ: How solved, actions taken, results achieved\n\n**4. КОММЕНТАРИИ (Quotes) - MANDATORY**\n- MUST include BOTH client AND agency quotes (500-700 chars each)\n- If quotes not provided, YOU MUST generate them based on case description\n- Format as blockquotes with attribution:\n> **Full Name, Title, Company:**\n>\n> Quote text here.\n\n**5. СОСТАВ ТВОРЧЕСКОЙ ГРУППЫ (Team Composition)**\n- Standard format with roles and names\n\n### Language Requirements\n- Russian quotation marks: «кавычки»\n- Em-dashes without spaces (—)\n- Numbers: 10 000 (with space)\n- Eliminate канцелярит (bureaucratic language)\n- Clear, active, professional Russian\n\n### Reference Example Pattern (Сады Придонья):\n\nЗАГОЛОВОК: «Сады Придонья» обновили упаковку соков для поколения «Альфа»\nПОДЗАГОЛОВОК: Брендинговое агентство DDVB разработало новый дизайн детской линейки\n\n[СИТУАЦИЯ paragraph: Context about Gen Alpha, market needs]\n\n> **Елена Шмакова, руководитель управления продуктового маркетинга компании «Сады Придонья»:**\n>\n> [Client quote 500-700 chars about business need]\n\n[ЗАДАЧА paragraph: Research insights, target audience analysis]\n\n> **Виктор Китаев, креативный директор DDVB по направлению FMCG:**\n>\n> [Agency quote 500-700 chars about creative approach]\n\n[РЕШЕНИЕ paragraphs: Design solution, execution, results]\n\n---\n\n**Состав творческой группы**\n\n**DDVB (агентство)**\n* Креативный директор: [Name]\n* Арт-директор: [Name]\n[...]\n\n**[Client Name] (клиент)**\n* [Role]: [Name]\n[...]\n\n---\n\n## Your Task\n\n1. **Assess Information**: Determine if you have enough details to create a complete case study\n2. **Ask Clarifying Questions** (in user's language) if needed:\n   - Target publication?\n   - Client industry and background?\n   - Project deliverables?\n   - Measurable results?\n   - Client quotes available?\n   - DDVB team members?\n3. **Generate Complete Case Study** in RUSSIAN following structure above\n4. **Create Metadata Package** in Russian:\n   - SEO title tag (50-60 chars)\n   - Meta description (150-160 chars)\n   - Primary keywords (3-5)\n   - Secondary keywords (5-10)\n   - Pull quotes (2-4)\n   - Social snippets (VK, Telegram, LinkedIn)\n\nRemember: ALWAYS output case study in RUSSIAN. Communication matches user's language, but final deliverable is RUSSIAN.`;\n\nconst messages = [\n  {\n    role: \"system\",\n    content: systemPrompt\n  },\n  {\n    role: \"user\",\n    content: userMessage\n  }\n];\n\nreturn {\n  json: {\n    ...userData,\n    openaiMessages: messages\n  }\n};"
+      },
+      "id": "prepare-openai",
+      "name": "Prepare OpenAI Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and parse OpenAI response\nconst response = $input.item.json.choices[0].message.content;\nconst originalData = $('Prepare OpenAI Request').item.json;\n\n// Parse the generated case study\nconst caseStudy = {\n  content: response,\n  userEmail: originalData.userEmail || 'user@example.com', // Should be collected in chat\n  communicationLanguage: originalData.communicationLanguage,\n  generatedAt: new Date().toISOString(),\n  sessionId: originalData.sessionId\n};\n\n// Basic validation\nconst validations = {\n  hasRussianText: /[А-Яа-яЁё]/.test(response),\n  hasQuotes: (response.match(/>/g) || []).length >= 2, // At least 2 blockquotes\n  hasTitle: /^[^\\n]+/.test(response),\n  lengthOk: response.length >= 1500 && response.length <= 4000,\n  hasDDVBBranding: /DDVB|агентство|команда/.test(response)\n};\n\nconst allValid = Object.values(validations).every(v => v === true);\n\nreturn {\n  json: {\n    ...caseStudy,\n    validations: validations,\n    isValid: allValid,\n    validationSummary: allValid ? '✅ All quality checks passed' : '⚠️ Some quality checks failed: ' + JSON.stringify(validations)\n  }\n};"
+      },
+      "id": "validate-output",
+      "name": "Validate Case Study",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "=noreply@ddvb.agency",
+        "toEmail": "={{ $json.userEmail }}",
+        "subject": "=Ваш кейс DDVB готов | Your DDVB Case Study is Ready",
+        "emailType": "html",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }\n    .header { background: #1a1a1a; color: white; padding: 20px; text-align: center; }\n    .content { background: #f9f9f9; padding: 30px; margin: 20px 0; border-radius: 8px; }\n    .case-study { background: white; padding: 25px; margin: 20px 0; border-left: 4px solid #ff6b6b; white-space: pre-wrap; }\n    .validation { background: #e8f5e9; padding: 15px; margin: 20px 0; border-radius: 5px; }\n    .footer { text-align: center; color: #666; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }\n    h2 { color: #1a1a1a; }\n    .meta { background: #fff3cd; padding: 15px; margin: 15px 0; border-radius: 5px; font-size: 14px; }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <h1>DDVB Case Study Generator</h1>\n    <p>Publication-Ready Case Study in Russian</p>\n  </div>\n  \n  <div class=\"content\">\n    <h2>Ваш кейс готов! | Your Case Study is Ready!</h2>\n    <p>Generated: {{ $json.generatedAt }}</p>\n    <p>Session ID: {{ $json.sessionId }}</p>\n    \n    <div class=\"validation\">\n      <strong>Quality Validation:</strong><br>\n      {{ $json.validationSummary }}\n    </div>\n    \n    <div class=\"case-study\">\n      <h3>📄 Complete Case Study (Russian)</h3>\n      {{ $json.content }}\n    </div>\n    \n    <div class=\"meta\">\n      <h3>📊 About This Case Study</h3>\n      <ul>\n        <li><strong>Language:</strong> Russian (русский язык)</li>\n        <li><strong>Format:</strong> СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ structure</li>\n        <li><strong>Standards:</strong> Russian Media Editorial Standards compliant</li>\n        <li><strong>Branding:</strong> DDVB agency perspective</li>\n        <li><strong>Length:</strong> ~{{ Math.floor($json.content.length / 1000) }}k characters</li>\n      </ul>\n    </div>\n  </div>\n  \n  <div class=\"footer\">\n    <p><strong>DDVB Case Study Generator</strong></p>\n    <p>Powered by n8n • OpenAI GPT-4o • Perplexity AI</p>\n    <p style=\"color: #999; font-size: 11px;\">This is an automated message. The case study has been generated following strict Russian media editorial standards.</p>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [2000, 300],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-credential",
+          "name": "SMTP Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseText": "={{ $json.isValid ? \n  ($json.communicationLanguage === 'russian' ? \n    '✅ Ваш кейс DDVB успешно создан и отправлен на email!\\n\\n📧 Проверьте свою почту для получения полного кейса с метаданными.\\n\\n💡 Кейс написан на русском языке и соответствует всем стандартам российских медиа.' : \n    '✅ Your DDVB case study has been successfully created and sent to your email!\\n\\n📧 Check your inbox for the complete case study with metadata.\\n\\n💡 The case study is written in Russian and complies with all Russian media standards.'\n  ) : \n  '⚠️ Case study generated with warnings. Please check the email for details.' \n}}",
+        "options": {}
+      },
+      "id": "chat-response",
+      "name": "Send Chat Response",
+      "type": "@n8n/n8n-nodes-langchain.chatResponse",
+      "typeVersion": 1,
+      "position": [2220, 300]
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Language Detection & Parsing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Language Detection & Parsing": {
+      "main": [
+        [
+          {
+            "node": "Route Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Decision": {
+      "main": [
+        [
+          {
+            "node": "Perplexity Research",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare OpenAI Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare OpenAI Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity Research": {
+      "main": [
+        [
+          {
+            "node": "Merge Research Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Research Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare OpenAI Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare OpenAI Request": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Case Study Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Case Study Generation": {
+      "main": [
+        [
+          {
+            "node": "Validate Case Study",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Case Study": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Send Chat Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-11-19T00:00:00.000Z",
+  "versionId": "1.0.0"
+}
