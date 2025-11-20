@@ -10,9 +10,10 @@ This n8n workflow acts as Ilya Morozov, Senior PR Executive at DDVB, creating pr
 
 - **Telegram Bot Interface**: Interact via Telegram messenger
 - **Russian Input**: Send requests in Russian via Telegram (natural for Russian PR team)
-- **AI-Powered Research**: Uses Perplexity API to research companies, industries, and context
-- **English Generation**: Internally generates case study in English first (better AI quality)
-- **Professional Translation**: Translates to Russian with proper formatting and terminology
+- **AI-Powered Research**: Uses Perplexity API for structured strategic research and company analysis
+- **English Generation**: Internally generates case study in English first with comprehensive reference examples (better AI quality)
+- **Professional Translation**: Translates to Russian with detailed editorial standards and proper formatting
+- **AI Humanization**: Post-translation humanization pass to make text sound natural and human-written
 - **Russian Media Standards**: Follows strict СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ structure with character limits
 - **Telegram Delivery**: Receives completed Russian case study directly in Telegram
 
@@ -23,15 +24,17 @@ Telegram Message (Russian input from user)
     ↓
 Validate Russian Input & Parse Entities
     ↓
-Research (Perplexity) - Translate to English & research
+Research (Perplexity) - Structured strategic analysis
     ↓
 Generate Case Study in English (OpenAI GPT-4o)
     ↓
-Translate to Russian (OpenAI GPT-4o with specialized prompt)
+Translate to Russian (OpenAI GPT-4o with detailed editorial standards)
+    ↓
+Humanize Russian Text (OpenAI GPT-4o to remove AI patterns)
     ↓
 Validate Russian Quality - Check standards compliance
     ↓
-Send to Telegram - Deliver Russian case study
+Send to Telegram - Deliver humanized Russian case study
 ```
 
 ## Workflow Components
@@ -46,30 +49,43 @@ Send to Telegram - Deliver Russian case study
 - Identifies missing information
 
 ### 3. Research Phase (Perplexity API)
-- Researches company background in English
-- Gathers industry context
-- Finds competitive landscape information
+- Translates Russian request to English
+- Researches company background, industry context, and competitive landscape
+- Provides structured research output with:
+  - Company background and market position
+  - Brand and market context
+  - Industry insights and trends
+  - Potential project drivers and challenges
 
 ### 4. English Case Study Generation (OpenAI GPT-4o)
-- Generates case study in English
+- Generates case study in English following comprehensive reference examples
 - Follows SITUATION-TASK-SOLUTION structure
 - Creates mandatory client and agency quotes (500-700 chars each)
-- Produces metadata in English
+- Integrates DDVB branding naturally throughout
+- Produces metadata in English (SEO tags, keywords, pull quotes)
 
 ### 5. Translation to Russian (OpenAI GPT-4o)
-- Professional translation with Russian media standards
+- Professional translation with detailed Russian media editorial standards
 - Applies proper Russian formatting («кавычки», em-dashes, number spacing)
-- Uses correct branding terminology (брендинг, айдентика, etc.)
+- Uses correct branding terminology (брендинг, айдентика, нейминг, etc.)
 - Maintains СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ structure
+- Eliminates канцелярит (bureaucratic language)
 
-### 6. Quality Validation
+### 6. AI Humanization (OpenAI GPT-4o)
+- Post-translation pass to remove AI patterns
+- Makes text sound natural and human-written
+- Varies sentence structures and lengths
+- Removes robotic phrasing while preserving all facts
+- Maintains Russian media standards and DDVB branding
+
+### 7. Quality Validation
 - Validates character limits (title ≤90, text 1500-2000)
 - Checks СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ structure
 - Verifies Russian formatting («кавычки», em-dashes, number spacing)
 - Confirms DDVB branding integration
 
-### 7. Telegram Delivery
-- Sends Russian case study to user's Telegram chat
+### 8. Telegram Delivery
+- Sends humanized Russian case study to user's Telegram chat
 - Includes validation results
 - Formatted with Markdown
 
@@ -185,26 +201,38 @@ case-study-generator/
 ### Russian Input with English-First Generation
 
 1. **User sends request in Russian** via Telegram (natural for Russian PR team)
-2. **Perplexity translates & researches** - converts Russian to English for research
+2. **Perplexity translates & researches** - structured strategic analysis in English
+   - Company background and market position
+   - Brand context and target audience
+   - Industry trends and competitive landscape
 3. **Generate case study in English** using OpenAI GPT-4o
    - Accepts Russian input but generates in English
    - Better AI quality and structure in English
    - Better handling of quotes and nuance
+   - Follows comprehensive reference examples
 4. **Translate to Russian** using specialized translation prompt
-   - Professional translation with media standards
+   - Professional translation with detailed editorial standards
    - Proper Russian formatting and terminology
    - СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ structure maintained
-5. **Validate Russian output** for quality
-6. **Deliver via Telegram** in Russian
+   - Eliminates канцелярит (bureaucratic language)
+5. **Humanize Russian text** using AI post-processing
+   - Removes AI patterns and robotic phrasing
+   - Varies sentence structures naturally
+   - Makes text sound human-written
+   - Preserves all facts and DDVB branding
+6. **Validate Russian output** for quality and standards compliance
+7. **Deliver via Telegram** in Russian
 
-### Why English-First Generation?
+### Why English-First Generation with Humanization?
 
 - **Better Quality**: AI generates more consistent, high-quality content in English
 - **Natural Input**: Users write in Russian (their native language)
 - **Specialized Translation**: Dedicated translation step ensures proper Russian formatting
 - **Terminology Control**: Translation prompt enforces correct брендинг terminology
 - **Structure Preservation**: SITUATION-TASK-SOLUTION translates cleanly to СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ
-- **Best of Both**: Russian input comfort + English generation quality
+- **AI Humanization**: Post-translation pass removes AI patterns and robotic language
+- **Natural Output**: Final text sounds human-written, not AI-generated
+- **Best of Both**: Russian input comfort + English generation quality + human-like output
 
 ## Telegram Bot Commands
 
@@ -269,8 +297,9 @@ Proprietary - DDVB Agency
 
 ## Version
 
-- **Version**: 2.0.0
+- **Version**: 2.1.0
 - **Created**: November 2024
+- **Updated**: November 2024 (Added AI humanization step)
 - **n8n Version**: Compatible with n8n 1.0+
 - **Platform**: Telegram Bot + n8n Cloud
-- **Architecture**: English-first generation with Russian translation
+- **Architecture**: English-first generation with Russian translation and AI humanization
