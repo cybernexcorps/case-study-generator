@@ -1,0 +1,57 @@
+{
+  "version": "2.0.0",
+  "prompts": {
+    "perplexity-research": {
+      "file": "perplexity-research.md",
+      "description": "Strategic research prompt for Perplexity API",
+      "model": "llama-3.1-sonar-large-128k-online",
+      "temperature": 0.3,
+      "maxTokens": 1000
+    },
+    "openai-generation": {
+      "file": "openai-generation.md",
+      "description": "English case study generation prompt for GPT-4o",
+      "model": "gpt-4o",
+      "temperature": 0.8,
+      "maxTokens": 2500
+    },
+    "russian-translation": {
+      "file": "russian-translation.md",
+      "description": "English to Russian translation with editorial standards",
+      "model": "gpt-4o",
+      "temperature": 0.3,
+      "maxTokens": 2500
+    },
+    "russian-humanization": {
+      "file": "russian-humanization.md",
+      "description": "AI text humanization for Russian content",
+      "model": "gpt-4o",
+      "temperature": 0.7,
+      "maxTokens": 2500
+    }
+  },
+  "sources": {
+    "github": {
+      "enabled": true,
+      "baseUrl": "https://raw.githubusercontent.com/YOUR_ORG/case-study-generator/main/prompts/",
+      "note": "Update YOUR_ORG with your GitHub organization/username"
+    },
+    "local": {
+      "enabled": false,
+      "basePath": "./prompts/",
+      "note": "For local development only - not available in n8n cloud"
+    },
+    "s3": {
+      "enabled": false,
+      "bucket": "your-bucket-name",
+      "prefix": "prompts/",
+      "note": "AWS S3 bucket for prompt storage"
+    }
+  },
+  "notes": [
+    "This configuration file defines all prompts used in the DDVB case study generator workflow",
+    "Update the 'sources.github.baseUrl' with your actual GitHub repository URL",
+    "Prompts are externalized for easier versioning and A/B testing",
+    "See docs/prompt-management.md for usage instructions"
+  ]
+}

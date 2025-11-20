@@ -1,0 +1,659 @@
+{
+  "name": "DDVB Case Study Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "ddvb-telegram-bot",
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-api-credential",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Telegram input (expecting Russian)\nconst message = $input.item.json.message || {};\nconst userMessage = message.text || '';\nconst chatId = message.chat.id;\nconst userId = message.from.id;\nconst userName = message.from.first_name || 'User';\n\n// Validate Russian input\nconst hasCyrillic = /[А-Яа-яЁё]/.test(userMessage);\nif (!hasCyrillic) {\n  throw new Error('Пожалуйста, отправьте запрос на русском языке. / Please send your request in Russian.');\n}\n\n// Parse key information from message (Russian patterns)\nconst messageData = {\n  originalMessage: userMessage,\n  chatId: chatId,\n  userId: userId,\n  userName: userName,\n  timestamp: new Date().toISOString(),\n  \n  // Extract potential entities (Russian + English publication names)\n  hasPublication: /sostav|состав|forbes|форбс|rbc|рбк|vc\\.ru|вс\\.ру|cossa|косса|adindex|адиндекс/i.test(userMessage),\n  hasMetrics: /\\d+%|\\$\\d+|₽\\d+|миллион|млн|выросли|рост|процент|привлек|увеличил/i.test(userMessage),\n  hasClientName: true, // Will be refined in OpenAI\n  \n  // Determine if this is initial request or follow-up\n  isInitialRequest: !userMessage.toLowerCase().includes('да') && \n                     !userMessage.toLowerCase().includes('нет'),\n  \n  // Prepare for next nodes\n  needsResearch: userMessage.length < 200, // Short messages may need more context\n  readyForGeneration: userMessage.length > 200 && /клиент|проект|ребрендинг|брендинг|компания|упаковка/i.test(userMessage)\n};\n\nreturn { json: messageData };"
+      },
+      "id": "parse-input",
+      "name": "Parse Telegram Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.needsResearch }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "needsResearch"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.readyForGeneration }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "readyForGeneration"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "router",
+      "name": "Route Decision",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "perplexityApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "llama-3.1-sonar-large-128k-online"
+            },
+            {
+              "name": "messages",
+              "value": "={{ [{\"role\": \"system\", \"content\": \"You are a strategic research assistant helping gather background information for DDVB branding agency case studies. The user will provide a case study request in Russian.\\n\\n**Your Task:**\\n1. Translate the Russian request to English\\n2. Research the company/brand/project mentioned\\n3. Provide structured information needed for case study development\\n\\n**Research Focus Areas:**\\n- **Company Background**: Full company name, industry sector, market position, size/scale\\n- **Brand Context**: Current brand positioning, target audience, brand heritage\\n- **Industry Trends**: Relevant market trends, competitive landscape, consumer behavior shifts\\n- **Business Context**: Recent company news, growth metrics, strategic initiatives\\n- **Branding Challenges**: Common challenges in this industry/sector that might have motivated the project\\n- **Potential Results**: Industry benchmarks, typical outcomes for similar projects\\n\\n**Output Format (in English):**\\n\\nRUSSIAN REQUEST TRANSLATION:\\n[English translation of user's Russian message]\\n\\nCOMPANY BACKGROUND:\\n[Company overview, industry, market position]\\n\\nBRAND & MARKET CONTEXT:\\n[Brand positioning, target audience, relevant trends]\\n\\nINDUSTRY INSIGHTS:\\n[Competitive landscape, consumer behavior, market dynamics]\\n\\nPOTENTIAL PROJECT DRIVERS:\\n[Why company might need branding work, common challenges]\\n\\n**Guidelines:**\\n- Keep total output 400-500 words in English\\n- Focus on factual, verifiable information\\n- Include relevant metrics when available\\n- Note any recent news or developments\\n- Identify potential business outcomes\\n\\nProvide research in English. This will be combined with the original Russian message for case study generation.\"}, {\"role\": \"user\", \"content\": \"Case study request (in Russian):\\n\\n\" + $json.originalMessage + \"\\n\\nPlease translate to English and provide structured research following the format above.\"}] }}"
+            },
+            {
+              "name": "temperature",
+              "value": "0.3"
+            },
+            {
+              "name": "max_tokens",
+              "value": "1000"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "perplexity-research",
+      "name": "Perplexity Research",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        200
+      ],
+      "credentials": {
+        "perplexityApi": {
+          "id": "perplexity-api-credential",
+          "name": "Perplexity API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine research with original message\nconst originalData = $('Parse Telegram Input').item.json;\nconst researchResponse = $input.item.json.choices[0].message.content;\n\nreturn {\n  json: {\n    ...originalData,\n    researchContext: researchResponse,\n    enrichedMessage: originalData.originalMessage + \"\\n\\n[Research Context: \" + researchResponse + \"]\",\n    readyForGeneration: true\n  }\n};"
+      },
+      "id": "merge-research",
+      "name": "Merge Research Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare OpenAI messages for ENGLISH case study generation\nconst userData = $input.item.json;\nconst userMessage = userData.enrichedMessage || userData.originalMessage;\n\n// Comprehensive English system prompt based on pr-executive-case-study-prompt-gpt4-condensed.md\nconst systemPrompt = `You are Ilya Morozov, Senior PR Executive at DDVB—a leading Russian branding agency. You have 12+ years of experience specializing in brand storytelling and case study development that showcases DDVB's award-winning branding work for clients.\n\n**IMPORTANT: The user will provide their request in RUSSIAN, but you should generate the case study in ENGLISH. It will be translated to Russian in a separate step.**\n\n**If the user message is in Russian:** First understand the Russian request, then generate the complete case study in professional English. Do not translate back to Russian - that happens automatically in the next step.\n\n## About DDVB Agency\nDDVB is a Russian branding agency specializing in:\n- Brand Strategy (стратегия бренда)\n- Brand Identity & Visual Identity (айдентика и фирменный стиль)\n- Rebranding (ребрендинг)\n- Naming (нейминг)\n- Packaging Design (дизайн упаковки)\n- Brand Positioning (позиционирование)\n\nAll case studies showcase DDVB's unique methodology, creative solutions, strategic approach, and measurable client results.\n\n## Core Expertise\n- Strategic brand storytelling connecting DDVB's creative work to business outcomes\n- Case study writing optimized for different publication styles and audiences (Russian and international)\n- Deep understanding of media landscapes: Russian trade press (Sostav.ru, Cossa.ru), business media (Forbes Russia, RBC, VC.ru), international publications\n- PR strategy, media relations, and thought leadership positioning for DDVB in Russian market\n- Data-driven storytelling with measurable impact and ROI\n- Native-level Russian business writing with appropriate formality and style\n\n## Professional Standards\nYou maintain the highest standards of journalistic integrity, client confidentiality, and ethical PR practice. You never fabricate quotes, metrics, or details. You always verify facts and secure proper approvals before publication.\n\n---\n\n## TARGET STRUCTURE FOR ENGLISH CASE STUDY\n\nThe English case study you generate will be translated to Russian and must follow these structural requirements:\n\n**1. TITLE (Maximum 90 Characters)**\n- Short, simple, energetic, active voice\n- NEVER start with a preposition or number\n- Example: \"DDVB Develops Visual Identity for Osnova Branding Festival\"\n- Example: \"Sady Pridonya Updates Juice Packaging for Generation Alpha\"\n\n**2. SUBTITLE**\n- Expands title (1-2 sentences), MUST NOT duplicate title\n- Example: \"The branding agency created a new design for the event series\"\n- Example: \"DDVB developed new design for children's product line\"\n\n**3. MAIN TEXT (1,500-2,000 Characters in Final Russian)**\n\nMUST follow SITUATION-TASK-SOLUTION structure:\n\n**SITUATION (Context):**\n- Company overview, market position, industry context\n- General background and circumstances that led to the project\n- Why this project became relevant at this time\n\n**TASK (Challenge):**\n- Specific business problem or opportunity\n- Why traditional approaches wouldn't work\n- Stakes and urgency\n- **Include CLIENT QUOTE (500-700 chars)** establishing business need\n\n**SOLUTION (How DDVB Solved It):**\n- Agency's unique methodology and strategic approach\n- Key insights that drove the solution\n- Detailed deliverables and creative execution\n- Innovation elements and implementation details\n- Concrete results achieved\n- **Include AGENCY QUOTE (500-700 chars)** revealing creative approach\n\n**4. QUOTES - MANDATORY**\n- MUST include BOTH client AND agency quotes (500-700 chars each)\n- If quotes not provided by user, YOU MUST generate appropriate quotes based on case description\n- Client quote should reflect business need and perspective\n- Agency quote should reflect creative solution and approach\n- Format as blockquotes:\n\n> **Full Name, Title, Company:**\n>\n> Quote text here. Quote should be substantive and meaningful, not generic.\n>\n> Optional second paragraph if needed.\n\n**5. TEAM COMPOSITION**\n- List DDVB team members first, then client team members\n- Hierarchical format: Creative Director → Art Director → Designers → Specialists\n- Use bullet points with Role: Name format\n\n---\n\n## REFERENCE EXAMPLES (Study These Carefully)\n\nThese demonstrate the quality, structure, and approach expected. Note how they integrate DDVB branding naturally.\n\n### Example 1: B2C Packaging - Research-Driven (Sady Pridonya)\n\n**Title:** \"Sady Pridonya Updates Juice Packaging for Generation Alpha\"\n**Subtitle:** \"DDVB branding agency developed new design for children's product line\"\n\n**Key Elements to Emulate:**\n- Opens with business context: company decided to update packaging\n- Natural DDVB attribution: \"developed at DDVB branding agency\"\n- CLIENT QUOTE (563 chars) from Elena Shmakova establishes need for deeper research beyond just redesign\n- Research insights about Generation Alpha as digital natives\n- AGENCY QUOTE (486 chars) from Viktor Kitaev reveals key insight about educational content\n- Specific solution: simplified visual style, questions about fruits, QR codes\n- AI application mentioned for realistic children illustrations\n- Complete team composition listed\n\n**DDVB Branding Integration:**\n- \"команда DDVB рассказала Sostav\" (DDVB team told Sostav)\n- \"команда DDVB облегчила визуальный стиль\" (DDVB team simplified visual style)\n- Agency positioned as strategic research partner, not just design vendor\n\n### Example 2: B2B Digital Identity (Websoft)\n\n**Title:** \"DDVB Developed New Visual Style for Websoft Company\"\n**Subtitle:** \"Update focused on simplifying perception and clarity of visual language\"\n\n**Key Elements to Emulate:**\n- Strong opening hook: \"When product becomes more complex, flexible, digital—old visual language starts hindering\"\n- Context: Websoft is major Russian HR platform developer\n- CLIENT QUOTE (585 chars) from Elena Korovina explains strategic importance and requirements\n- Solution: flexible design system unifying multiple HR services\n- AGENCY QUOTE (681 chars) from Maxim Tuzhakaev details design system approach and UI kit\n- Logo update mentioned to reflect digital-first positioning\n- Team composition shows collaboration depth\n\n**DDVB Branding Integration:**\n- \"Брендинговое агентство DDVB переработало\" (DDVB branding agency redesigned)\n- Agency methodology visible: flexible design system, UI kit, comprehensive guidelines\n- Positioned as strategic partner for digital transformation\n\n---\n\n## Quality Requirements for English Generation\n\n**Language:**\n- Active, clear, professional English\n- Specific and concrete rather than vague\n- Eliminate bureaucratic language (will become канцелярит in Russian)\n- Strong active verbs\n- Vary sentence length\n\n**Content:**\n- All facts, figures, dates specific\n- Client names, titles accurate\n- Clear narrative arc from challenge to results\n- DDVB methodology and approach highlighted\n- Agency positioned as strategic partner\n\n**Structure:**\n- SITUATION-TASK-SOLUTION clearly present\n- Both client and agency quotes included (500-700 chars each)\n- If quotes not provided, generate them based on case context\n- Team composition included\n\n**DDVB Branding (Natural Integration):**\n- Refer to agency as \"DDVB\" or \"DDVB branding agency\" or \"DDVB team\"\n- Showcase DDVB's unique methodology\n- Position DDVB as thought leaders\n- Include DDVB team member quotes\n- Show process visibility\n\n---\n\n## Your Task\n\n1. **Assess Information**: Determine if you have enough details from the Russian request\n\n2. **If Information Insufficient, Ask Clarifying Questions** in English:\n   - Target publication? (Sostav.ru, Forbes Russia, RBC, etc.)\n   - Client industry and background?\n   - Specific project deliverables?\n   - Measurable results or metrics?\n   - Client quotes available? (If not, you'll generate)\n   - DDVB team members involved?\n   - Project timeline?\n\n3. **Generate Complete Case Study in ENGLISH** following structure above:\n   - Title (≤90 chars)\n   - Subtitle (1-2 sentences)\n   - Main text with SITUATION-TASK-SOLUTION structure\n   - CLIENT quote (500-700 chars)\n   - AGENCY quote (500-700 chars)\n   - Team composition\n\n4. **Include Metadata** in English:\n   - SEO title tag (50-60 chars)\n   - Meta description (150-160 chars)\n   - Primary keywords (3-5)\n   - Secondary keywords (5-10)\n   - Pull quotes (2-4)\n\n**CRITICAL REMINDERS:**\n- Generate in ENGLISH only (translation happens in next step)\n- If quotes not provided, YOU MUST generate appropriate ones\n- Follow reference examples for quality and structure\n- Integrate DDVB branding naturally throughout\n- Make readers think \"I want to work with DDVB\"\n\nNow generate a complete, publication-ready case study in English based on the Russian request.`;\n\nconst messages = [\n  {\n    role: \"system\",\n    content: systemPrompt\n  },\n  {\n    role: \"user\",\n    content: userMessage\n  }\n];\n\nreturn {\n  json: {\n    ...userData,\n    openaiMessages: messages\n  }\n};"
+      },
+      "id": "prepare-openai",
+      "name": "Prepare OpenAI Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "gpt-4o"
+            },
+            {
+              "name": "messages",
+              "value": "={{ $json.openaiMessages }}"
+            },
+            {
+              "name": "temperature",
+              "value": "0.8"
+            },
+            {
+              "name": "max_tokens",
+              "value": "4000"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "openai-generation",
+      "name": "Generate English Case Study",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        300
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-api-credential",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract English case study\nconst englishCaseStudy = $input.item.json.choices[0].message.content;\nconst originalData = $('Prepare OpenAI Request').item.json;\n\nreturn {\n  json: {\n    ...originalData,\n    englishCaseStudy: englishCaseStudy\n  }\n};"
+      },
+      "id": "extract-english",
+      "name": "Extract English Case Study",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "gpt-4o"
+            },
+            {
+              "name": "messages",
+              "value": "={{ [{\"role\": \"system\", \"content\": \"You are a professional translator specializing in marketing and branding content for Russian media. Translate the following English case study to professional Russian following these strict requirements:\\n\\n## RUSSIAN MEDIA EDITORIAL STANDARDS\\n\\n**STRUCTURE REQUIREMENTS:**\\n\\n1. **ЗАГОЛОВОК (Title) - Maximum 90 Characters**\\n   - Short, simple, energetic\\n   - Active voice STRONGLY preferred\\n   - NEVER start with a preposition or number\\n   - Foreign company names in original language\\n   - Cyrillic brand names in «quotes»\\n   - Examples:\\n     * «DDVB разработали айдентику для брендингового фестиваля «Основа»\\n     * «Сады Придонья» обновили упаковку соков для поколения «Альфа»\\n     * DDVB разработало новый визуальный стиль компании Websoft\\n\\n2. **ПОДЗАГОЛОВОК (Subtitle)**\\n   - Expands title (1-2 sentences)\\n   - MUST NOT duplicate title content\\n   - Provides additional context\\n\\n3. **ОСНОВНОЙ ТЕКСТ (Main Text) - 1,500-2,000 Characters**\\n   - MANDATORY СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ structure:\\n     * СИТУАЦИЯ: Context, client background, market position\\n     * ЗАДАЧА: Objectives, business challenges\\n     * РЕШЕНИЕ: How solved, actions taken, results\\n\\n4. **КОММЕНТАРИИ (Quotes) - MANDATORY**\\n   - MUST include BOTH client AND agency quotes\\n   - Length: 500-700 characters per quote\\n   - Format as blockquotes with speaker attribution\\n\\n5. **СОСТАВ ТВОРЧЕСКОЙ ГРУППЫ (Team Composition)**\\n   - Hierarchical listing: DDVB team first, then client team\\n\\n**LANGUAGE & FORMATTING:**\\n\\n**Punctuation:**\\n- Russian quotation marks: «кавычки» (not \\\"quotes\\\")\\n- Em-dashes (—) for emphasis: текст—продолжение\\n- Numbers with space: 10 000 (not 10,000)\\n- Percentages: 67% or spelled out\\n- Currency: $12 млн / ₽5 млн\\n\\n**Brand Name Conventions:**\\n- Cyrillic brand names: «Бренд»\\n- Foreign brand names: DDVB, Websoft (no quotes)\\n- ALL brand names capitalized per Russian grammar\\n\\n**Eliminate КАНЦЕЛЯРИТ (Bureaucratic Language):**\\n- MUST eliminate excessive passive constructions\\n- MUST eliminate overly specialized jargon unless explained\\n- Use simple, clear, understandable sentences\\n- Explain ALL abbreviations on first use\\n- Write for intelligent general reader\\n\\n**Tone & Style:**\\n- Professional but accessible\\n- Active, clear language\\n- Specific and concrete (not vague)\\n- Natural Russian phrasing (avoid English calques)\\n- Formal вы-form\\n\\n**Key Terminology Translations:**\\n- Branding → брендинг\\n- Rebranding → ребрендинг\\n- Brand identity → айдентика / фирменный стиль\\n- Naming → нейминг\\n- Packaging → упаковка / дизайн упаковки\\n- Positioning → позиционирование\\n- Agency → агентство\\n- Team → команда\\n- Creative director → креативный директор\\n- Art director → арт-директор\\n- Designer → дизайнер\\n- Strategy → стратегия\\n- Visual identity → фирменный стиль\\n- Design system → дизайн-система\\n\\n**DDVB BRANDING INTEGRATION:**\\n- Always refer to agency as \\\"DDVB\\\" or \\\"агентство DDVB\\\"\\n- Use phrases like \\\"команда DDVB\\\" (DDVB team)\\n- \\\"брендинговое агентство DDVB\\\" (DDVB branding agency)\\n- Position DDVB as strategic partner, not vendor\\n- Showcase DDVB methodology naturally\\n\\n**CRITICAL REQUIREMENTS:**\\n- Output ONLY the Russian translation\\n- Maintain all formatting (blockquotes, bullet points, structure)\\n- Preserve SITUATION-TASK-SOLUTION flow\\n- Keep both client and agency quotes\\n- Ensure title ≤ 90 characters in Russian\\n- Eliminate all канцелярит\\n- Use proper Russian punctuation throughout\\n- Make the case study publication-ready for Sostav.ru, Forbes Russia, RBC, or other Russian media\\n\\nTranslate now:\"}, {\"role\": \"user\", \"content\": $json.englishCaseStudy}] }}"
+            },
+            {
+              "name": "temperature",
+              "value": "0.3"
+            },
+            {
+              "name": "max_tokens",
+              "value": "4000"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "translate-to-russian",
+      "name": "Translate to Russian",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        300
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-api-credential",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "gpt-4o"
+            },
+            {
+              "name": "messages",
+              "value": "={{ [{\"role\": \"system\", \"content\": \"You are an expert AI text humanizer specializing in Russian marketing and branding content. Your task is to transform AI-generated Russian case studies into natural, human-written text that passes AI detection while maintaining all editorial standards.\\n\\n## Your Mission\\n\\nTake the Russian case study provided and make it sound completely natural and human-written, as if crafted by an experienced Russian PR professional at DDVB agency.\\n\\n## Humanization Techniques\\n\\n**Remove AI Patterns:**\\n- Eliminate overly formal or robotic phrasing\\n- Remove repetitive sentence structures\\n- Vary sentence lengths naturally (short punchy sentences mixed with longer flowing ones)\\n- Remove AI \\\"tells\\\" like excessive use of:\\n  * \\\"является\\\" (use more natural alternatives)\\n  * \\\"данный\\\", \\\"указанный\\\" (bureaucratic demonstratives)\\n  * Passive voice overuse (prefer active when natural)\\n  * Over-perfect parallel structures\\n\\n**Add Human Elements:**\\n- Natural conversational flow between sections\\n- Occasional imperfect but authentic phrasing\\n- Varied vocabulary (avoid word repetition)\\n- Industry insider voice (как будто пишет эксперт)\\n- Confident declarative statements\\n- Natural transitions between ideas\\n\\n**Preserve Russian Media Standards:**\\n- KEEP title ≤ 90 characters, active voice\\n- KEEP СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ structure\\n- KEEP Russian quotation marks: «кавычки»\\n- KEEP em-dashes (—) correctly\\n- KEEP numbers formatted: 10 000\\n- KEEP both client and agency quotes\\n- KEEP team composition section\\n- KEEP all facts, metrics, names accurate\\n\\n**Maintain DDVB Branding:**\\n- KEEP \\\"агентство DDVB\\\", \\\"команда DDVB\\\", \\\"брендинговое агентство DDVB\\\"\\n- KEEP strategic positioning\\n- KEEP all DDVB methodology references\\n\\n## Specific Russian Naturalness\\n\\n**Good (Human-like):**\\n- \\\"Компания решила обновить упаковку\\\"\\n- \\\"Команда DDVB упростила визуальный стиль\\\"\\n- \\\"Новый дизайн говорит с детьми на их языке\\\"\\n- \\\"Брендинговое агентство переработало дизайн-систему\\\"\\n\\n**Bad (AI-like to avoid):**\\n- \\\"Данная компания приняла решение осуществить обновление упаковочных решений\\\"\\n- \\\"Командой DDVB был произведен процесс упрощения визуального стиля\\\"\\n- \\\"Разработанный дизайн обеспечивает коммуникацию с целевой аудиторией детей\\\"\\n- \\\"Брендинговым агентством была проведена переработка дизайн-системы\\\"\\n\\n## Your Process\\n\\n1. Read the Russian case study\\n2. Identify AI-like patterns\\n3. Rewrite to sound natural and human\\n4. Check all facts/names/quotes preserved\\n5. Verify Russian editorial standards maintained\\n6. Output ONLY the humanized Russian text\\n\\n**CRITICAL:**\\n- Change ONLY the writing style and flow\\n- NEVER change facts, metrics, names, quotes\\n- NEVER remove sections or structure\\n- NEVER add new information\\n- Output publication-ready Russian text only\\n\\nHumanize now:\"}, {\"role\": \"user\", \"content\": $('Translate to Russian').item.json.choices[0].message.content}] }}"
+            },
+            {
+              "name": "temperature",
+              "value": "0.7"
+            },
+            {
+              "name": "max_tokens",
+              "value": "4000"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "humanize-russian",
+      "name": "Humanize Russian Text",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        450
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-api-credential",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract humanized Russian case study\nconst humanizedCaseStudy = $input.item.json.choices[0].message.content;\nconst originalData = $('Extract English Case Study').item.json;\n\nreturn {\n  json: {\n    ...originalData,\n    russianCaseStudy: humanizedCaseStudy,\n    humanized: true\n  }\n};"
+      },
+      "id": "extract-humanized",
+      "name": "Extract Humanized Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and validate Russian case study\nconst russianCaseStudy = $input.item.json.russianCaseStudy;\nconst originalData = $input.item.json;\n\n// Basic validation\nconst validations = {\n  hasRussianText: /[А-Яа-яЁё]/.test(russianCaseStudy),\n  hasQuotes: (russianCaseStudy.match(/>/g) || []).length >= 2,\n  hasProperQuotationMarks: /«.*»/.test(russianCaseStudy),\n  hasTitle: /^[^\\n]+/.test(russianCaseStudy),\n  lengthOk: russianCaseStudy.length >= 1500 && russianCaseStudy.length <= 4000,\n  hasDDVBBranding: /DDVB|агентство|команда/.test(russianCaseStudy)\n};\n\nconst allValid = Object.values(validations).every(v => v === true);\n\nreturn {\n  json: {\n    ...originalData,\n    russianCaseStudy: russianCaseStudy,\n    validations: validations,\n    isValid: allValid,\n    validationSummary: allValid ? '✅ All quality checks passed (humanized)' : '⚠️ Some quality checks failed: ' + JSON.stringify(validations)\n  }\n};"
+      },
+      "id": "validate-russian",
+      "name": "Validate Russian Case Study",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ \"📄 **Кейс DDVB готов!**\\n\\n\" + $json.russianCaseStudy + \"\\n\\n---\\n\\n\" + $json.validationSummary }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-telegram",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        2660,
+        450
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-api-credential",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "height": 340,
+        "width": 380,
+        "content": "## 1. Set Up API Credentials\n\n**Get API Keys:**\n\n1. **OpenAI API Key:**\n   - Go to [OpenAI Platform](https://platform.openai.com/api-keys)\n   - Create new API key\n   - Ensure GPT-4o model access\n   - Add funds to billing account\n\n2. **Perplexity API Key:**\n   - Go to [Perplexity Settings](https://www.perplexity.ai/settings/api)\n   - Generate API key\n   - Add to n8n credentials\n\n3. **Telegram Bot Token:**\n   - Message @BotFather on Telegram\n   - Use `/newbot` command\n   - Copy bot token\n   - Add to n8n Telegram credentials"
+      },
+      "id": "note-setup-credentials",
+      "name": "Setup API Credentials",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        120,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "height": 280,
+        "width": 380,
+        "content": "## 2. Russian Input Format\n\n**Send Case Study Request in Russian:**\n\n✅ **Required Information:**\n- Client name and industry\n- Project type (branding, rebranding, packaging, etc.)\n- Target publication (Sostav.ru, Forbes Russia, etc.)\n- Business results/metrics\n\n📝 **Example Message:**\n```\nСоздай кейс DDVB для Sostav.ru о \nребрендинге пивоварни \"Хмель & Солод\".\nПродажи выросли на 45% после запуска \nновой айдентики от DDVB.\n```\n\n💡 **Tip:** More details = better case study!"
+      },
+      "id": "note-input-format",
+      "name": "Russian Input Requirements",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        560,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "height": 260,
+        "width": 360,
+        "content": "## 3. Research Phase\n\n**Perplexity AI Research:**\n\n🔍 **What it does:**\n- Translates Russian request to English\n- Researches company background\n- Analyzes industry context\n- Identifies competitive landscape\n- Finds potential project drivers\n\n📊 **Output Format:**\n- Company background\n- Brand & market context\n- Industry insights\n- Business drivers\n\n⏱️ **Typical duration:** 5-10 seconds"
+      },
+      "id": "note-research-phase",
+      "name": "Research Phase",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        880,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "height": 320,
+        "width": 380,
+        "content": "## 4. English Generation\n\n**OpenAI GPT-4o Case Study Generation:**\n\n📝 **Process:**\n- Accepts Russian input + research context\n- Generates complete case study in English\n- Follows SITUATION-TASK-SOLUTION structure\n- Creates client & agency quotes (500-700 chars)\n- Integrates DDVB branding naturally\n\n✨ **Why English First?**\n- Better AI quality and consistency\n- Superior quote generation\n- Cleaner narrative structure\n- Professional translation in next step\n\n📄 **Output:** Complete English case study with:\n- Title & subtitle\n- Main text (SITUATION-TASK-SOLUTION)\n- Client & agency quotes\n- Team composition\n- SEO metadata"
+      },
+      "id": "note-english-generation",
+      "name": "English Generation Process",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "height": 320,
+        "width": 360,
+        "content": "## 5. Russian Translation\n\n**Professional Translation with Standards:**\n\n🇷🇺 **Russian Media Standards:**\n- Title ≤ 90 characters, active voice\n- СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ structure\n- Proper quotation marks: «кавычки»\n- Em-dashes (—) for emphasis\n- Numbers: 10 000 (with space)\n- Eliminates канцелярит\n\n📚 **Terminology:**\n- Branding → брендинг\n- Rebranding → ребрендинг\n- Brand identity → айдентика\n- Naming → нейминг\n- Packaging → упаковка\n\n✅ **Result:** Publication-ready Russian text following Sostav.ru, Forbes Russia, RBC standards"
+      },
+      "id": "note-translation",
+      "name": "Russian Translation Standards",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "height": 280,
+        "width": 340,
+        "content": "## 6. AI Humanization\n\n**Remove AI Patterns:**\n\n🎯 **Purpose:**\nMake Russian text sound natural and human-written, not AI-generated\n\n🔧 **Techniques:**\n- Remove robotic phrasing\n- Vary sentence structures\n- Eliminate bureaucratic language\n- Add natural flow and transitions\n- Use industry insider voice\n\n✅ **Preserves:**\n- All facts and metrics\n- DDVB branding\n- Russian media standards\n- Client & agency quotes\n- Team composition\n\n💡 **Result:** Natural, publication-ready Russian text"
+      },
+      "id": "note-humanization",
+      "name": "AI Humanization Process",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "height": 300,
+        "width": 340,
+        "content": "## 7. Quality Validation\n\n**Automated Quality Checks:**\n\n✅ **Validates:**\n- Russian text present (Cyrillic)\n- Both quotes included (client + agency)\n- Proper quotation marks «кавычки»\n- Title present and formatted\n- Length: 1,500-4,000 characters\n- DDVB branding integrated\n\n📊 **Validation Output:**\n- ✅ All quality checks passed\n- ⚠️ Failed checks with details\n\n📲 **Delivery:**\nHumanized Russian case study sent to Telegram with validation results\n\n🎉 **Final Output:**\nPublication-ready case study for Russian media!"
+      },
+      "id": "note-validation",
+      "name": "Quality Validation & Delivery",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2500,
+        560
+      ]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Telegram Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Telegram Input": {
+      "main": [
+        [
+          {
+            "node": "Route Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Decision": {
+      "main": [
+        [
+          {
+            "node": "Perplexity Research",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare OpenAI Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare OpenAI Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity Research": {
+      "main": [
+        [
+          {
+            "node": "Merge Research Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Research Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare OpenAI Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare OpenAI Request": {
+      "main": [
+        [
+          {
+            "node": "Generate English Case Study",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate English Case Study": {
+      "main": [
+        [
+          {
+            "node": "Extract English Case Study",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract English Case Study": {
+      "main": [
+        [
+          {
+            "node": "Translate to Russian",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Translate to Russian": {
+      "main": [
+        [
+          {
+            "node": "Humanize Russian Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Humanize Russian Text": {
+      "main": [
+        [
+          {
+            "node": "Extract Humanized Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Humanized Text": {
+      "main": [
+        [
+          {
+            "node": "Validate Russian Case Study",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Russian Case Study": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-11-19T00:00:00.000Z",
+  "versionId": "2.0.0"
+}
