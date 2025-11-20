@@ -4,7 +4,7 @@ AI-powered Telegram bot for generating publication-ready case studies in Russian
 
 ## Overview
 
-This n8n workflow acts as Ilya Morozov, Senior PR Executive at DDVB, creating professional case studies via Telegram. Case studies are generated in English first, then professionally translated to Russian following strict editorial standards for Russian media outlets.
+This n8n workflow acts as Ilya Morozov, Senior PR Executive at DDVB, creating professional case studies via Telegram. Case studies are generated in English first, then professionally translated to Russian following strict editorial standards for Russian media outlets. All long-form prompts live in standalone markdown files that the workflow fetches dynamically from GitHub, so prompt updates no longer require editing or re-importing the workflow JSON.
 
 ## Features
 
@@ -111,6 +111,7 @@ All case studies comply with:
 3. API credentials:
    - Perplexity API key
    - OpenAI API key (GPT-4o access)
+4. Public Git hosting for prompts (GitHub raw URLs are used in this repo and can be swapped for your own)
 
 ### Setup
 
@@ -125,12 +126,17 @@ All case studies comply with:
    # Select: workflow/ddvb-case-study-generator.json
    ```
 
-3. **Configure Credentials**:
+3. **Configure Prompt Source (optional but recommended)**:
+   - In the `Assemble Prompts` code node, update `GITHUB_BASE_URL` to your repository if you fork the prompts
+   - Switch `PROMPT_VERSION` to load prompts from different branches/environments (e.g., `main`, `staging`)
+   - Ensure your n8n instance can reach the raw GitHub URLs (or replace them with S3/GitLab/etc.)
+
+4. **Configure Credentials**:
    - Add Telegram Bot credentials (bot token)
    - Add Perplexity API credentials
    - Add OpenAI API credentials (ensure GPT-4o model access)
 
-4. **Activate Workflow**:
+5. **Activate Workflow**:
    - Enable the workflow in n8n
    - Telegram bot will start listening for messages
 
@@ -182,19 +188,26 @@ You'll receive a Telegram message containing:
 
 ```
 case-study-generator/
-├── README.md                          # This file
-├── QUICKSTART.md                      # 10-minute setup guide
-├── workflow/
-│   └── ddvb-case-study-generator.json # Main n8n workflow (Telegram-based)
-├── prompts/
-│   ├── system-prompt.md               # Complete English system prompt
-│   ├── translation-prompt.md          # Russian translation guidelines
-│   ├── reference-examples.md          # Russian case study examples
-│   └── editorial-standards.md         # Russian media standards
-└── docs/
-    ├── setup-guide.md                 # Detailed setup instructions
-    └── customization.md               # How to customize the workflow
+├── README.md                            # This file
+├── QUICKSTART.md                        # Fast setup checklist for n8n + Telegram
+├── AGENTS.md                            # Helper agent instructions for collaborators
+├── CLAUDE.md                            # Claude-specific collaboration notes
+├── docs/
+│   └── customization.md                 # Deep dive on extending the workflow
+├── prompts/                             # All long-form prompts consumed at runtime
+│   ├── editorial-standards.md
+│   ├── openai-generation.md
+│   ├── perplexity-research.md
+│   ├── reference-examples.md
+│   ├── russian-humanization.md
+│   ├── russian-translation.md
+│   ├── system-prompt.md
+│   └── prompt-config.json
+└── workflow/
+    └── ddvb-case-study-generator.json   # Main n8n workflow export
 ```
+
+> **Note:** All prompts are fetched at runtime from the raw URLs configured in the four “Fetch … Prompt” nodes and merged inside `Assemble Prompts`. Editing any markdown file and pushing to Git automatically updates the live workflow—no JSON re-imports required.
 
 ## How It Works
 
@@ -244,21 +257,16 @@ Once your bot is active, users can:
 
 ## Customization
 
-### Changing PR Executive Name
+Full, step-by-step instructions live in `docs/customization.md`. The guide covers:
 
-Edit the system prompt in the "Prepare OpenAI Request" node to replace "Ilya Morozov" with another team member.
+- **System prompt + persona**: update DDVB services, methodology, awards, or switch the PR executive name everywhere the persona appears.
+- **AI behavior tuning**: adjust OpenAI/Perplexity temperature, max tokens, or swap models (e.g., `gpt-4o` → `gpt-4-turbo`) directly in the relevant nodes.
+- **Publication targeting**: add new publication profiles, detection logic in `Language Detection & Parsing`, and pass the selection into the prompt.
+- **Validation rules**: extend the `Validate Case Study` node with extra checks, scoring, and automated revision triggers.
+- **Integrations & automation**: push approved case studies to WordPress, Slack, Airtable, Google Drive, or custom endpoints after validation.
+- **Advanced features**: multi-turn conversations, translation fallbacks, prompt A/B testing, feedback loops, and prompt version tracking.
 
-### Adding DDVB Methodology
-
-Update the system prompt to include specific DDVB frameworks, processes, or proprietary tools.
-
-### Target Publications
-
-The workflow adapts content for:
-- Russian trade press (Sostav.ru, Cossa.ru, Adindex)
-- Business media (Forbes Russia, RBC, VC.ru)
-- Design communities (Behance Russia, DesignDepot)
-- Industry journals (РЖМ, Маркетинг в России)
+Use the testing checklist in `docs/customization.md` after every change (Russian/English inputs, validation pass, formatting, costs, and quality score) before rolling updates into production.
 
 ## Troubleshooting
 
@@ -275,12 +283,12 @@ The workflow adapts content for:
 - Verify GPT-4o access for OpenAI
 
 **Translation quality issues:**
-- Check translation prompt in "Translate to Russian" node
+- Review the contents of `prompts/russian-translation.md`
 - Adjust temperature (lower = more consistent, higher = more creative)
 - Verify Russian formatting requirements
 
 **Case study structure problems:**
-- Review English generation prompt
+- Review `prompts/openai-generation.md`
 - Ensure SITUATION-TASK-SOLUTION structure is clear
 - Check that quotes are being generated properly
 
@@ -297,9 +305,9 @@ Proprietary - DDVB Agency
 
 ## Version
 
-- **Version**: 2.1.0
+- **Version**: 2.2.0
 - **Created**: November 2024
-- **Updated**: November 2024 (Added AI humanization step)
+- **Updated**: November 2025 (Prompt externalization + workflow cleanup)
 - **n8n Version**: Compatible with n8n 1.0+
 - **Platform**: Telegram Bot + n8n Cloud
 - **Architecture**: English-first generation with Russian translation and AI humanization
