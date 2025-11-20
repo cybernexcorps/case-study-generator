@@ -7,7 +7,7 @@ Learn how to customize the workflow for your specific needs, add new features, a
 1. [Customizing System Prompt](#customizing-system-prompt)
 2. [Modifying AI Behavior](#modifying-ai-behavior)
 3. [Adding New Publications](#adding-new-publications)
-4. [Email Template Customization](#email-template-customization)
+4. [Telegram Delivery Customization](#telegram-delivery-customization)
 5. [Language Detection Improvements](#language-detection-improvements)
 6. [Adding Validation Rules](#adding-validation-rules)
 7. [Integrating with External Systems](#integrating-with-external-systems)
@@ -48,8 +48,9 @@ You are [Your Name], Senior PR Executive at DDVB...
 ```
 
 Search for all instances of "Ilya Morozov" in:
+
 - System prompt
-- Email templates
+- Telegram response templates
 - Documentation
 
 ### Adding DDVB Methodology
@@ -228,73 +229,86 @@ Adapt your case study to this publication's style and requirements as defined in
 
 ---
 
-## Email Template Customization
+## Telegram Delivery Customization
 
-Edit the **"Send Email"** node to customize the HTML template.
+The workflow now delivers every case study directly in Telegram via the **"Send to Telegram"** node. Use this section to adapt the messaging, layout, and interactive elements to your needs.
 
-### Adding DDVB Branding
+### Message Template Basics
 
-```html
-<div class="header" style="background: #YOUR_BRAND_COLOR;">
-  <img src="https://your-domain.com/logo.png" alt="DDVB" style="height: 50px;">
-  <h1>DDVB Case Study Generator</h1>
-  <p>Publication-Ready Case Study in Russian</p>
-</div>
+- Telegram accepts **MarkdownV2** or **HTML** formatting. Set `parseMode` inside the node’s *Additional Fields*.
+- Keep each message under Telegram’s 4096-character limit. Split long responses into multiple messages if needed.
+- Build the body dynamically so metadata, validation, and quotes stay in sync with upstream nodes.
+
+```javascript
+{{ [
+  '*DDVB Case Study Ready*',
+  `*Название:* ${$json.title}`,
+  `*Целевая площадка:* ${$json.targetPublication}`,
+  '',
+  $json.content,
+  '',
+  `*Валидация:* ${$json.validationSummary}`
+].join('\n') }}
 ```
 
-### Custom Color Scheme
+### Splitting Long Messages
 
-```html
-<style>
-  :root {
-    --brand-primary: #1a1a1a;
-    --brand-secondary: #ff6b6b;
-    --brand-accent: #4ecdc4;
+Use a Function node before the Telegram node to chunk long texts:
+
+```javascript
+const chunkSize = 3500;
+const text = $json.content;
+const chunks = [];
+
+for (let i = 0; i < text.length; i += chunkSize) {
+  chunks.push(text.slice(i, i + chunkSize));
+}
+
+return chunks.map(chunk => ({ json: { chunk } }));
+```
+
+Then send each chunk with an Item Lists→Split in Batches node followed by Telegram → Send Message (set `text` to `={{ $json.chunk }}`).
+
+### Adding Metadata + Inline Buttons
+
+Leverage Telegram keyboards for quick actions (e.g., open Google Doc, mark as approved):
+
+```json
+"additionalFields": {
+  "parseMode": "MarkdownV2",
+  "replyMarkup": {
+    "rows": [
+      [
+        {
+          "text": "📄 Исходник",
+          "url": "={{ $json.caseStudyLink }}"
+        }
+      ],
+      [
+        {
+          "text": "🔁 Запросить правки",
+          "callbackData": "request_revision"
+        }
+      ]
+    ]
   }
-
-  .header { background: var(--brand-primary); }
-  .case-study { border-left: 4px solid var(--brand-secondary); }
-  .validation { background: #e8f5e9; }
-</style>
+}
 ```
 
-### Adding Metadata Section
+### Sending Attachments
 
-```html
-<div class="metadata" style="background: #f0f0f0; padding: 20px; margin: 20px 0;">
-  <h3>📊 Case Study Metadata</h3>
-  <table style="width: 100%; border-collapse: collapse;">
-    <tr>
-      <td><strong>Title:</strong></td>
-      <td>{{ $json.title }}</td>
-    </tr>
-    <tr>
-      <td><strong>Target Publication:</strong></td>
-      <td>{{ $json.targetPublication }}</td>
-    </tr>
-    <tr>
-      <td><strong>Word Count:</strong></td>
-      <td>{{ $json.wordCount }}</td>
-    </tr>
-    <tr>
-      <td><strong>Character Count:</strong></td>
-      <td>{{ $json.characterCount }}</td>
-    </tr>
-  </table>
-</div>
-```
+- Use **Telegram → Send Document** to attach the final case study as a TXT/PDF exported from the validation node.
+- Combine with the message node by chaining them in sequence or wrapping them in an IF node (send document only when QA passes).
 
-### Adding Call-to-Action
+### Status + Alert Messages
 
-```html
-<div class="cta" style="text-align: center; margin: 30px 0; padding: 20px; background: #f9f9f9;">
-  <h3>Need Revisions?</h3>
-  <p>Reply to this email with your feedback or request changes.</p>
-  <a href="https://chat.ddvb.agency" style="display: inline-block; padding: 12px 24px; background: #ff6b6b; color: white; text-decoration: none; border-radius: 5px;">
-    Start New Case Study
-  </a>
-</div>
-```
+Add short status updates to keep users informed:
+
+- “Исследуем данные…”
+- “Генерируем черновик…”
+- “Проверяем редакционные стандарты…”
+
+These can be optional Telegram nodes triggered via IF nodes tied to specific execution stages.
 
 ---
 
@@ -539,7 +553,7 @@ Notify team when case study is generated:
         {
           "type": "button",
           "text": "View Full Case Study",
-          "url": "={{ $json.emailLink }}"
+          "url": "={{ $json.caseStudyLink || $json.telegramMessageUrl || $json.executionUrl }}"
         }
       ]
     }
@@ -563,7 +577,7 @@ Log all generated case studies to Airtable for tracking:
     "Generated Date": "={{ $json.generatedAt }}",
     "Quality Score": "={{ $json.qualityScore }}",
     "Word Count": "={{ $json.wordCount }}",
-    "User Email": "={{ $json.userEmail }}",
+    "Requester Username": "={{ $json.telegram?.username || $json.chatUsername || '' }}",
     "Content": "={{ $json.content }}"
   }
 }
@@ -656,7 +670,7 @@ const selectedPrompt = promptVariants[variantIndex];
 
 Collect user feedback to improve:
 
-1. Add feedback form link in email
+1. Add inline button or slash-command in Telegram (e.g., “Оценить материал”)
 2. Create webhook endpoint for feedback
 3. Log to database
 4. Analyze feedback trends
@@ -717,7 +731,7 @@ After any customization:
 - [ ] Test with Russian input
 - [ ] Test with English input
 - [ ] Verify all validations pass
-- [ ] Check email delivery
+- [ ] Check Telegram delivery
 - [ ] Confirm Russian formatting (кавычки, em-dashes)
 - [ ] Validate character limits
 - [ ] Ensure DDVB branding present
