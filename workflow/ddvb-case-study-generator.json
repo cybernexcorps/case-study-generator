@@ -5,21 +5,22 @@
       "parameters": {
         "updates": [
           "message"
-        ]
+        ],
+        "additionalFields": {}
       },
-      "id": "telegram-trigger",
+      "id": "8b2c9f5a-dd40-4a3a-9f3d-aad495913db8",
       "name": "Telegram Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1.1,
       "position": [
-        0,
-        300
+        -2624,
+        160
       ],
       "webhookId": "ddvb-telegram-bot",
       "credentials": {
         "telegramApi": {
-          "id": "telegram-api-credential",
-          "name": "Telegram API"
+          "id": "BnEQsFHcvbF7jdMc",
+          "name": "Telegram account"
         }
       }
     },
@@ -27,86 +28,68 @@
       "parameters": {
         "jsCode": "// Parse Telegram input (expecting Russian)\nconst message = $input.item.json.message || {};\nconst userMessage = message.text || '';\nconst chatId = message.chat.id;\nconst userId = message.from.id;\nconst userName = message.from.first_name || 'User';\n\n// Validate Russian input\nconst hasCyrillic = /[А-Яа-яЁё]/.test(userMessage);\nif (!hasCyrillic) {\n  throw new Error('Пожалуйста, отправьте запрос на русском языке. / Please send your request in Russian.');\n}\n\n// Parse key information from message (Russian patterns)\nconst messageData = {\n  originalMessage: userMessage,\n  chatId: chatId,\n  userId: userId,\n  userName: userName,\n  timestamp: new Date().toISOString(),\n  \n  // Extract potential entities (Russian + English publication names)\n  hasPublication: /sostav|состав|forbes|форбс|rbc|рбк|vc\\.ru|вс\\.ру|cossa|косса|adindex|адиндекс/i.test(userMessage),\n  hasMetrics: /\\d+%|\\$\\d+|₽\\d+|миллион|млн|выросли|рост|процент|привлек|увеличил/i.test(userMessage),\n  hasClientName: true, // Will be refined in OpenAI\n  \n  // Determine if this is initial request or follow-up\n  isInitialRequest: !userMessage.toLowerCase().includes('да') && \n                     !userMessage.toLowerCase().includes('нет'),\n  \n  // Prepare for next nodes\n  needsResearch: userMessage.length < 200, // Short messages may need more context\n  readyForGeneration: userMessage.length > 200 && /клиент|проект|ребрендинг|брендинг|компания|упаковка/i.test(userMessage)\n};\n\nreturn { json: messageData };"
       },
-      "id": "parse-input",
+      "id": "cc31ec8b-7e07-45fe-ab97-748a4e680fc4",
       "name": "Parse Telegram Input",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        220,
-        300
+        -2416,
+        160
       ]
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "https://raw.githubusercontent.com/cybernexcorps/case-study-generator/claude/build-n8n-agent-01JmQ29xDuXm1u9gHeeDFfSQ/prompts/perplexity-research.md",
-        "responseFormat": "string"
+        "url": "https://raw.githubusercontent.com/cybernexcorps/case-study-generator/main/prompts/perplexity-research.md",
+        "options": {}
       },
-      "id": "fetch-prompt-1",
+      "id": "5f1826f3-1d06-4183-a9a1-0b3b2fc3f496",
       "name": "Fetch Perplexity Prompt",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        440,
-        300
+        -2192,
+        160
       ]
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "https://raw.githubusercontent.com/cybernexcorps/case-study-generator/claude/build-n8n-agent-01JmQ29xDuXm1u9gHeeDFfSQ/prompts/openai-generation.md",
-        "responseFormat": "string"
+        "url": "https://raw.githubusercontent.com/cybernexcorps/case-study-generator/main/prompts/openai-generation.md",
+        "options": {}
       },
-      "id": "fetch-prompt-2",
+      "id": "d8c33966-f474-452d-bbb8-53af31676e8c",
       "name": "Fetch Generation Prompt",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        660,
-        300
+        -1968,
+        160
       ]
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "https://raw.githubusercontent.com/cybernexcorps/case-study-generator/claude/build-n8n-agent-01JmQ29xDuXm1u9gHeeDFfSQ/prompts/russian-translation.md",
-        "responseFormat": "string"
+        "url": "https://raw.githubusercontent.com/cybernexcorps/case-study-generator/main/prompts/russian-humanization.md",
+        "options": {}
       },
-      "id": "fetch-prompt-3",
-      "name": "Fetch Russian Translation Prompt",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        880,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://raw.githubusercontent.com/cybernexcorps/case-study-generator/claude/build-n8n-agent-01JmQ29xDuXm1u9gHeeDFfSQ/prompts/russian-humanization.md",
-        "responseFormat": "string"
-      },
-      "id": "fetch-prompt-4",
+      "id": "10d23f15-3114-44b3-be07-b7200dff9ac7",
       "name": "Fetch Humanization Prompt",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1100,
-        300
+        -1744,
+        160
       ]
     },
     {
       "parameters": {
-        "jsCode": "const baseData = $('Parse Telegram Input').item.json;\nconst getPrompt = (nodeName) => {\n  const data = $(nodeName).item.json;\n  if (typeof data.body === 'string') {\n    return data.body;\n  }\n  if (typeof data.data === 'string') {\n    return data.data;\n  }\n  if (typeof data === 'string') {\n    return data;\n  }\n  return JSON.stringify(data);\n};\n\nconst prompts = {\n  perplexityResearch: getPrompt('Fetch Perplexity Prompt'),\n  openaiGeneration: getPrompt('Fetch Generation Prompt'),\n  russianTranslation: getPrompt('Fetch Russian Translation Prompt'),\n  russianHumanization: getPrompt('Fetch Humanization Prompt')\n};\n\nreturn {\n  json: {\n    ...baseData,\n    prompts,\n    promptsLoaded: true,\n    promptVersion: 'main',\n    promptLoadTimestamp: new Date().toISOString()\n  }\n};"
+        "jsCode": "const baseData = $('Parse Telegram Input').item.json;\nconst getPrompt = (nodeName) => {\n  const data = $(nodeName).item.json;\n  if (typeof data.body === 'string') {\n    return data.body;\n  }\n  if (typeof data.data === 'string') {\n    return data.data;\n  }\n  if (typeof data === 'string') {\n    return data;\n  }\n  return JSON.stringify(data);\n};\n\nconst prompts = {\n  perplexityResearch: getPrompt('Fetch Perplexity Prompt'),\n  openaiGeneration: getPrompt('Fetch Generation Prompt'),\n  russianHumanization: getPrompt('Fetch Humanization Prompt')\n};\n\nreturn {\n  json: {\n    ...baseData,\n    prompts,\n    promptsLoaded: true,\n    promptVersion: 'main',\n    promptLoadTimestamp: new Date().toISOString()\n  }\n};"
       },
-      "id": "assemble-prompts",
+      "id": "e8c3a7fa-9a1d-4865-992b-795be248f060",
       "name": "Assemble Prompts",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1320,
-        300
+        -1312,
+        160
       ]
     },
     {
@@ -157,13 +140,13 @@
           "fallbackOutput": "extra"
         }
       },
-      "id": "router",
+      "id": "cbe7b914-8249-4fcf-813a-60a047056f07",
       "name": "Route Decision",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
       "position": [
-        1540,
-        300
+        -1088,
+        160
       ]
     },
     {
@@ -186,18 +169,18 @@
         "jsonBody": "={{ {\n  model: \"sonar\",\n  messages: [\n    {\n      role: \"system\",\n      content: $('Assemble Prompts').item.json.prompts.perplexityResearch\n    },\n    {\n      role: \"user\",\n      content: \"Case study request (in Russian):\\n\\n\" + $json.originalMessage + \"\\n\\nPlease translate to English and provide structured research following the format above.\"\n    }\n  ],\n  temperature: 0.3,\n  max_tokens: 1000\n} }}",
         "options": {}
       },
-      "id": "perplexity-research",
+      "id": "1217ee61-44f4-454c-ba50-f47ea97fbcb8",
       "name": "Perplexity Research",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1760,
-        100
+        -864,
+        -48
       ],
       "credentials": {
         "perplexityApi": {
-          "id": "perplexity-api-credential",
-          "name": "Perplexity API"
+          "id": "um7RpJwg4207ROLP",
+          "name": "Perplexity account"
         }
       }
     },
@@ -205,26 +188,26 @@
       "parameters": {
         "jsCode": "// Combine research with original message\nconst originalData = $('Parse Telegram Input').item.json;\nconst researchResponse = $input.item.json.choices[0].message.content;\n\nreturn {\n  json: {\n    ...originalData,\n    researchContext: researchResponse,\n    enrichedMessage: originalData.originalMessage + \"\\n\\n[Research Context: \" + researchResponse + \"]\",\n    readyForGeneration: true\n  }\n};"
       },
-      "id": "merge-research",
+      "id": "c7530b43-c194-4f6e-9f40-6b6e662d5a2f",
       "name": "Merge Research Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1980,
-        100
+        -656,
+        -48
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Prepare OpenAI messages for ENGLISH case study generation\nconst userData = $input.item.json;\nconst userMessage = userData.enrichedMessage || userData.originalMessage;\nconst systemPrompt = $('Assemble Prompts').item.json.prompts.openaiGeneration;\n\nconst messages = [\n  {\n    role: 'system',\n    content: systemPrompt\n  },\n  {\n    role: 'user',\n    content: userMessage\n  }\n];\n\nreturn {\n  json: {\n    ...userData,\n    openaiMessages: messages\n  }\n};"
+        "jsCode": "// Prepare OpenAI messages for RUSSIAN case study generation\nconst userData = $input.item.json;\nconst userMessage = userData.enrichedMessage || userData.originalMessage;\nconst systemPrompt = $('Assemble Prompts').item.json.prompts.openaiGeneration;\n\nconst messages = [\n  {\n    role: 'system',\n    content: systemPrompt\n  },\n  {\n    role: 'user',\n    content: userMessage\n  }\n];\n\nreturn {\n  json: {\n    ...userData,\n    openaiMessages: messages\n  }\n};"
       },
-      "id": "prepare-openai",
+      "id": "aeda2cda-6511-4dbd-a396-aa64e153a49f",
       "name": "Prepare OpenAI Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2200,
-        300
+        -432,
+        160
       ]
     },
     {
@@ -244,35 +227,35 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {\n  model: \"gpt-4o\",\n  messages: $json.openaiMessages,\n  temperature: 0.8,\n  max_tokens: 4000\n} }}",
+        "jsonBody": "={{ {\n  model: \"gpt-5\",\n  messages: $json.openaiMessages,\n  temperature: 0.8,\n  max_tokens: 4000\n} }}",
         "options": {}
       },
-      "id": "openai-generation",
-      "name": "Generate English Case Study",
+      "id": "710fe4d3-ecf1-4cd4-8f13-231f28947695",
+      "name": "Generate Russian Case Study",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2420,
-        300
+        -208,
+        160
       ],
       "credentials": {
         "openAiApi": {
-          "id": "openai-api-credential",
-          "name": "OpenAI API"
+          "id": "vMHSP02jcq5bmgAi",
+          "name": "OpenAi account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "// Extract English case study\nconst englishCaseStudy = $input.item.json.choices[0].message.content;\nconst originalData = $('Prepare OpenAI Request').item.json;\n\nreturn {\n  json: {\n    ...originalData,\n    englishCaseStudy: englishCaseStudy\n  }\n};"
+        "jsCode": "// Extract Russian case study\nconst russianCaseStudy = $input.item.json.choices[0].message.content;\nconst originalData = $('Prepare OpenAI Request').item.json;\n\nreturn {\n  json: {\n    ...originalData,\n    russianCaseStudy: russianCaseStudy\n  }\n};"
       },
-      "id": "extract-english",
-      "name": "Extract English Case Study",
+      "id": "e846e38b-8a6b-4448-9db6-806ff0ec33db",
+      "name": "Extract Russian Case Study",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2640,
-        300
+        16,
+        160
       ]
     },
     {
@@ -292,214 +275,194 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {\n  model: \"gpt-4o\",\n  messages: [\n    {\n      role: \"system\",\n      content: $('Assemble Prompts').item.json.prompts.russianTranslation\n    },\n    {\n      role: \"user\",\n      content: $json.englishCaseStudy\n    }\n  ],\n  temperature: 0.3,\n  max_tokens: 4000\n} }}",
+        "jsonBody": "={{ {\n  model: \"gpt-5\",\n  messages: [\n    {\n      role: \"system\",\n      content: $('Assemble Prompts').item.json.prompts.russianHumanization\n    },\n    {\n      role: \"user\",\n      content: $('Extract Russian Case Study').item.json.russianCaseStudy\n    }\n  ],\n  temperature: 0.7,\n  max_tokens: 4000\n} }}",
         "options": {}
       },
-      "id": "translate-to-russian",
-      "name": "Translate to Russian",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2860,
-        300
-      ],
-      "credentials": {
-        "openAiApi": {
-          "id": "openai-api-credential",
-          "name": "OpenAI API"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "openAiApi",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ {\n  model: \"gpt-4o\",\n  messages: [\n    {\n      role: \"system\",\n      content: $('Assemble Prompts').item.json.prompts.russianHumanization\n    },\n    {\n      role: \"user\",\n      content: $('Translate to Russian').item.json.choices[0].message.content\n    }\n  ],\n  temperature: 0.7,\n  max_tokens: 4000\n} }}",
-        "options": {}
-      },
-      "id": "humanize-russian",
+      "id": "70d65d35-6080-47f7-9b65-716772e0b3b1",
       "name": "Humanize Russian Text",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3080,
-        300
+        464,
+        160
       ],
       "credentials": {
         "openAiApi": {
-          "id": "openai-api-credential",
-          "name": "OpenAI API"
+          "id": "vMHSP02jcq5bmgAi",
+          "name": "OpenAi account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "// Extract humanized Russian case study\nconst humanizedCaseStudy = $input.item.json.choices[0].message.content;\nconst originalData = $('Extract English Case Study').item.json;\n\nreturn {\n  json: {\n    ...originalData,\n    russianCaseStudy: humanizedCaseStudy,\n    humanized: true\n  }\n};"
+        "jsCode": "// Extract humanized Russian case study\nconst humanizedCaseStudy = $input.item.json.choices[0].message.content;\nconst originalData = $('Extract Russian Case Study').item.json;\n\nreturn {\n  json: {\n    ...originalData,\n    russianCaseStudy: humanizedCaseStudy,\n    humanized: true\n  }\n};"
       },
-      "id": "extract-humanized",
+      "id": "a57e9673-57a7-4eb2-919d-a467e733bf49",
       "name": "Extract Humanized Text",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3300,
-        300
+        672,
+        160
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Extract and validate Russian case study\nconst russianCaseStudy = $input.item.json.russianCaseStudy;\nconst originalData = $input.item.json;\n\n// Basic validation\nconst validations = {\n  hasRussianText: /[А-Яа-яЁё]/.test(russianCaseStudy),\n  hasQuotes: (russianCaseStudy.match(/>/g) || []).length >= 2,\n  hasProperQuotationMarks: /«.*»/.test(russianCaseStudy),\n  hasTitle: /^[^\\n]+/.test(russianCaseStudy),\n  lengthOk: russianCaseStudy.length >= 1500 && russianCaseStudy.length <= 4000,\n  hasDDVBBranding: /DDVB|агентство|команда/.test(russianCaseStudy)\n};\n\nconst allValid = Object.values(validations).every(v => v === true);\n\nreturn {\n  json: {\n    ...originalData,\n    russianCaseStudy: russianCaseStudy,\n    validations: validations,\n    isValid: allValid,\n    validationSummary: allValid ? '✅ All quality checks passed (humanized)' : '⚠️ Some quality checks failed: ' + JSON.stringify(validations)\n  }\n};"
+        "jsCode": "// Extract and validate Russian case study\nconst russianCaseStudy = $input.item.json.russianCaseStudy;\nconst originalData = $input.item.json;\n\n// Check for Russian quotation marks - more flexible approach\n// Check for both opening and closing marks (they can be in different parts of text)\nconst hasOpeningQuote = russianCaseStudy.includes('«');\nconst hasClosingQuote = russianCaseStudy.includes('»');\nconst hasCompletePair = /«[^»]*»/.test(russianCaseStudy);\n// Accept if we have both marks OR at least one complete pair\nconst hasProperQuotationMarks = (hasOpeningQuote && hasClosingQuote) || hasCompletePair;\n\n// Basic validation\n// Note: Upper limit increased to 15000 since we now split long messages for Telegram\nconst validations = {\n  hasRussianText: /[А-Яа-яЁё]/.test(russianCaseStudy),\n  hasQuotes: (russianCaseStudy.match(/>/g) || []).length >= 2,\n  hasProperQuotationMarks: hasProperQuotationMarks,\n  hasTitle: /^[^\\n]+/.test(russianCaseStudy),\n  lengthOk: russianCaseStudy.length >= 1500 && russianCaseStudy.length <= 15000,\n  hasDDVBBranding: /DDVB|агентство|команда/.test(russianCaseStudy)\n};\n\nconst allValid = Object.values(validations).every(v => v === true);\n\n// Calculate word count for better feedback\nconst wordCount = russianCaseStudy.split(/\\s+/).length;\n\n// Provide more detailed feedback on what failed\nconst failedChecks = Object.entries(validations)\n  .filter(([key, value]) => !value)\n  .map(([key]) => key);\n\nconst validationSummary = allValid \n  ? `✅ All quality checks passed (humanized)\\n📊 Length: ${russianCaseStudy.length} chars, ${wordCount} words`\n  : `⚠️ Some quality checks failed: ${failedChecks.join(', ')}\\n📊 Length: ${russianCaseStudy.length} chars, ${wordCount} words`;\n\nreturn {\n  json: {\n    ...originalData,\n    russianCaseStudy: russianCaseStudy,\n    validations: validations,\n    isValid: allValid,\n    wordCount: wordCount,\n    characterCount: russianCaseStudy.length,\n    validationSummary: validationSummary\n  }\n};"
       },
-      "id": "validate-russian",
+      "id": "ebff3730-8a23-407f-b553-8a200b54eb4e",
       "name": "Validate Russian Case Study",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3520,
-        300
+        896,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split long messages into chunks for Telegram (4096 char limit)\nconst data = $input.item.json;\nconst russianCaseStudy = data.russianCaseStudy || '';\nconst validationSummary = data.validationSummary || '';\n\n// Telegram limit is 4096 characters, we'll use 3800 to be safe (leaving room for header/footer)\nconst MAX_CHUNK_SIZE = 3800;\nconst header = '📄 **Кейс DDVB готов!**\\n\\n';\nconst footer = '\\n\\n---\\n\\n' + validationSummary;\n\n// Build full message\nconst fullMessage = header + russianCaseStudy + footer;\n\n// If message fits in one chunk, return single item\nif (fullMessage.length <= MAX_CHUNK_SIZE) {\n  return {\n    json: {\n      ...data,\n      messageChunk: fullMessage,\n      totalChunks: 1,\n      currentChunk: 1\n    }\n  };\n}\n\n// Split into chunks - try to preserve paragraph boundaries\nconst chunks = [];\nconst paragraphs = russianCaseStudy.split('\\n\\n');\nlet currentChunk = '';\nlet chunkNumber = 1;\n\nfor (let i = 0; i < paragraphs.length; i++) {\n  const paragraph = paragraphs[i];\n  const testChunk = currentChunk + (currentChunk ? '\\n\\n' : '') + paragraph;\n  \n  // If adding this paragraph would exceed limit\n  if (testChunk.length > MAX_CHUNK_SIZE && currentChunk.length > 0) {\n    // Save current chunk with header\n    const chunkHeader = chunkNumber === 1 ? header : `📄 **Кейс DDVB готов!** (часть ${chunkNumber})\\n\\n`;\n    chunks.push(chunkHeader + currentChunk);\n    chunkNumber++;\n    currentChunk = paragraph;\n  } else {\n    currentChunk = testChunk;\n  }\n  \n  // If single paragraph is too long, split by sentences\n  if (currentChunk.length > MAX_CHUNK_SIZE) {\n    const sentences = paragraph.split(/(?<=[.!?])\\s+/);\n    currentChunk = currentChunk.replace(paragraph, '').trim();\n    \n    for (const sentence of sentences) {\n      const testSentence = currentChunk + (currentChunk ? ' ' : '') + sentence;\n      if (testSentence.length > MAX_CHUNK_SIZE && currentChunk.length > 0) {\n        const chunkHeader = chunkNumber === 1 ? header : `📄 **Кейс DDVB готов!** (часть ${chunkNumber})\\n\\n`;\n        chunks.push(chunkHeader + currentChunk);\n        chunkNumber++;\n        currentChunk = sentence;\n      } else {\n        currentChunk = testSentence;\n      }\n    }\n  }\n}\n\n// Add remaining chunk\nif (currentChunk.trim().length > 0) {\n  const chunkHeader = chunkNumber === 1 ? header : `📄 **Кейс DDVB готов!** (часть ${chunkNumber})\\n\\n`;\n  chunks.push(chunkHeader + currentChunk.trim());\n}\n\n// Add footer to last chunk if it fits\nif (chunks.length > 0) {\n  const lastChunk = chunks[chunks.length - 1];\n  if (lastChunk.length + footer.length <= MAX_CHUNK_SIZE) {\n    chunks[chunks.length - 1] = lastChunk + footer;\n  } else {\n    // Footer as separate message if it doesn't fit\n    chunks.push(footer);\n  }\n}\n\n// Return multiple items, one per chunk (n8n will process each)\nreturn chunks.map((chunk, index) => ({\n  json: {\n    ...data,\n    messageChunk: chunk,\n    totalChunks: chunks.length,\n    currentChunk: index + 1\n  }\n}));"
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Split Message for Telegram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        160
       ]
     },
     {
       "parameters": {
         "chatId": "={{ $json.chatId }}",
-        "text": "={{ \"📄 **Кейс DDVB готов!**\\n\\n\" + $json.russianCaseStudy + \"\\n\\n---\\n\\n\" + $json.validationSummary }}",
+        "text": "={{ $json.messageChunk }}",
         "additionalFields": {
           "parse_mode": "Markdown"
         }
       },
-      "id": "send-telegram",
+      "id": "13e8d793-d979-4873-b1e1-b935e152f618",
       "name": "Send to Telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.1,
       "position": [
-        3740,
-        300
+        1344,
+        160
       ],
+      "webhookId": "c715e2db-3abe-41f1-9f92-b1cd0b0bc7f8",
       "credentials": {
         "telegramApi": {
-          "id": "telegram-api-credential",
-          "name": "Telegram API"
+          "id": "BnEQsFHcvbF7jdMc",
+          "name": "Telegram account"
         }
       }
     },
     {
       "parameters": {
+        "content": "## 1. Set Up API Credentials\n\n**Get API Keys:**\n\n1. **OpenAI API Key:**\n   - Go to [OpenAI Platform](https://platform.openai.com/api-keys)\n   - Create new API key\n   - Ensure GPT-5 model access\n   - Add funds to billing account\n\n2. **Perplexity API Key:**\n   - Go to [Perplexity Settings](https://www.perplexity.ai/settings/api)\n   - Generate API key\n   - Add to n8n credentials\n\n3. **Telegram Bot Token:**\n   - Message @BotFather on Telegram\n   - Use `/newbot` command\n   - Copy bot token\n   - Add to n8n Telegram credentials",
         "height": 340,
-        "width": 380,
-        "content": "## 1. Set Up API Credentials\n\n**Get API Keys:**\n\n1. **OpenAI API Key:**\n   - Go to [OpenAI Platform](https://platform.openai.com/api-keys)\n   - Create new API key\n   - Ensure GPT-4o model access\n   - Add funds to billing account\n\n2. **Perplexity API Key:**\n   - Go to [Perplexity Settings](https://www.perplexity.ai/settings/api)\n   - Generate API key\n   - Add to n8n credentials\n\n3. **Telegram Bot Token:**\n   - Message @BotFather on Telegram\n   - Use `/newbot` command\n   - Copy bot token\n   - Add to n8n Telegram credentials"
+        "width": 380
       },
-      "id": "note-setup-credentials",
+      "id": "3fd318a8-b46c-4d0f-b405-1f9ffbd4ef32",
       "name": "Setup API Credentials",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        0,
-        -100
+        -2624,
+        -256
       ]
     },
     {
       "parameters": {
-        "height": 280,
-        "width": 380,
-        "content": "## 2. Russian Input Format\n\n**Send Case Study Request in Russian:**\n\n✅ **Required Information:**\n- Client name and industry\n- Project type (branding, rebranding, packaging, etc.)\n- Target publication (Sostav.ru, Forbes Russia, etc.)\n- Business results/metrics\n\n📝 **Example Message:**\n```\nСоздай кейс DDVB для Sostav.ru о \nребрендинге пивоварни \"Хмель & Солод\".\nПродажи выросли на 45% после запуска \nновой айдентики от DDVB.\n```\n\n💡 **Tip:** More details = better case study!"
+        "content": "## 2. Russian Input Format\n\n**Send Case Study Request in Russian:**\n\n✅ **Required Information:**\n- Client name and industry\n- Project type (branding, rebranding, packaging, etc.)\n- Target publication (Sostav.ru, Forbes Russia, etc.)\n- Business results/metrics\n\n📝 **Example Message:**\n```\nСоздай кейс DDVB для Sostav.ru о \nребрендинге пивоварни \"Хмель & Солод\".\nПродажи выросли на 45% после запуска \nновой айдентики от DDVB.\n```\n\n💡 **Tip:** More details = better case study!",
+        "height": 504,
+        "width": 380
       },
-      "id": "note-input-format",
+      "id": "ed743c9f-9b6a-492c-8264-7d1bd28849de",
       "name": "Russian Input Requirements",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        220,
-        540
+        -2416,
+        400
       ]
     },
     {
       "parameters": {
+        "content": "## 3. Research Phase\n\n**Perplexity AI Research:**\n\n🔍 **What it does:**\n- Translates Russian request to English\n- Researches company background\n- Analyzes industry context\n- Identifies competitive landscape\n- Finds potential project drivers\n\n📊 **Output Format:**\n- Company background\n- Brand & market context\n- Industry insights\n- Business drivers\n\n⏱️ **Typical duration:** 5-10 seconds",
         "height": 260,
-        "width": 360,
-        "content": "## 3. Research Phase\n\n**Perplexity AI Research:**\n\n🔍 **What it does:**\n- Translates Russian request to English\n- Researches company background\n- Analyzes industry context\n- Identifies competitive landscape\n- Finds potential project drivers\n\n📊 **Output Format:**\n- Company background\n- Brand & market context\n- Industry insights\n- Business drivers\n\n⏱️ **Typical duration:** 5-10 seconds"
+        "width": 360
       },
-      "id": "note-research-phase",
+      "id": "ba1acba3-238b-460f-9125-cfe94812c57e",
       "name": "Research Phase",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1760,
-        -200
+        -864,
+        -352
       ]
     },
     {
       "parameters": {
+        "content": "## 4. Russian Generation\n\n**OpenAI GPT-5 Case Study Generation:**\n\n📝 **Process:**\n- Accepts Russian input + research context\n- Generates complete case study directly in Russian\n- Follows СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ structure\n- Creates client & agency quotes (500-700 chars)\n- Integrates DDVB branding naturally\n- Applies Russian media standards (quotation marks, typography)\n\n📄 **Output:** Complete Russian case study with:\n- Title & subtitle (≤90 chars, active voice)\n- Main text (СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ)\n- Client & agency quotes\n- Team composition\n- SEO metadata",
         "height": 320,
-        "width": 380,
-        "content": "## 4. English Generation\n\n**OpenAI GPT-4o Case Study Generation:**\n\n📝 **Process:**\n- Accepts Russian input + research context\n- Generates complete case study in English\n- Follows SITUATION-TASK-SOLUTION structure\n- Creates client & agency quotes (500-700 chars)\n- Integrates DDVB branding naturally\n\n✨ **Why English First?**\n- Better AI quality and consistency\n- Superior quote generation\n- Cleaner narrative structure\n- Professional translation in next step\n\n📄 **Output:** Complete English case study with:\n- Title & subtitle\n- Main text (SITUATION-TASK-SOLUTION)\n- Client & agency quotes\n- Team composition\n- SEO metadata"
+        "width": 380
       },
-      "id": "note-english-generation",
-      "name": "English Generation Process",
+      "id": "748ab0e2-314a-421a-8a50-434746c0e240",
+      "name": "Russian Generation Process",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2420,
-        -80
+        -208,
+        -240
       ]
     },
     {
       "parameters": {
+        "content": "## 5. AI Humanization\n\n**Remove AI Patterns:**\n\n🎯 **Purpose:**\nMake Russian text sound natural and human-written, not AI-generated\n\n🔧 **Techniques:**\n- Remove robotic phrasing\n- Vary sentence structures\n- Eliminate bureaucratic language (канцелярит)\n- Add natural flow and transitions\n- Use industry insider voice\n\n✅ **Preserves:**\n- All facts and metrics\n- DDVB branding\n- Russian media standards\n- Client & agency quotes\n- Team composition\n\n💡 **Result:** Natural, publication-ready Russian text",
         "height": 320,
-        "width": 360,
-        "content": "## 5. Russian Translation\n\n**Professional Translation with Standards:**\n\n🇷🇺 **Russian Media Standards:**\n- Title ≤ 90 characters, active voice\n- СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ structure\n- Proper quotation marks: «кавычки»\n- Em-dashes (—) for emphasis\n- Numbers: 10 000 (with space)\n- Eliminates канцелярит\n\n📚 **Terminology:**\n- Branding → брендинг\n- Rebranding → ребрендинг\n- Brand identity → айдентика\n- Naming → нейминг\n- Packaging → упаковка\n\n✅ **Result:** Publication-ready Russian text following Sostav.ru, Forbes Russia, RBC standards"
+        "width": 360
       },
-      "id": "note-translation",
-      "name": "Russian Translation Standards",
+      "id": "e05c4088-292f-4b0f-8e1b-f687caf9dec9",
+      "name": "AI Humanization Process (Updated)",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2860,
-        -60
+        240,
+        -208
       ]
     },
     {
       "parameters": {
+        "content": "## 6. Quality Validation\n\n**Automated Quality Checks:**\n\n✅ **Validates:**\n- Russian text present (Cyrillic)\n- Both quotes included (client + agency)\n- Proper quotation marks «кавычки»\n- Title present and formatted (≤90 chars)\n- Length: 1,500-4,000 characters\n- DDVB branding integrated\n- СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ structure\n\n📊 **Validation Output:**\n- ✅ All quality checks passed\n- ⚠️ Failed checks with details",
         "height": 280,
-        "width": 340,
-        "content": "## 6. AI Humanization\n\n**Remove AI Patterns:**\n\n🎯 **Purpose:**\nMake Russian text sound natural and human-written, not AI-generated\n\n🔧 **Techniques:**\n- Remove robotic phrasing\n- Vary sentence structures\n- Eliminate bureaucratic language\n- Add natural flow and transitions\n- Use industry insider voice\n\n✅ **Preserves:**\n- All facts and metrics\n- DDVB branding\n- Russian media standards\n- Client & agency quotes\n- Team composition\n\n💡 **Result:** Natural, publication-ready Russian text"
+        "width": 340
       },
-      "id": "note-humanization",
-      "name": "AI Humanization Process",
+      "id": "8ccf1c45-3bf3-4795-b918-77559a76ebae",
+      "name": "Quality Validation Process",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        3080,
-        540
+        464,
+        400
       ]
     },
     {
       "parameters": {
+        "content": "## 7. Telegram Delivery\n\n**Final Output Delivery:**\n\n📲 **What gets sent:**\n- Complete humanized Russian case study\n- Quality validation summary\n- Formatted with Markdown\n\n🎉 **Final Result:**\nPublication-ready case study for Russian media (Sostav.ru, Forbes Russia, RBC, VC.ru, etc.)\n\n✅ **Ready for:**\n- Direct publication\n- Editorial review\n- Client approval",
         "height": 300,
-        "width": 340,
-        "content": "## 7. Quality Validation\n\n**Automated Quality Checks:**\n\n✅ **Validates:**\n- Russian text present (Cyrillic)\n- Both quotes included (client + agency)\n- Proper quotation marks «кавычки»\n- Title present and formatted\n- Length: 1,500-4,000 characters\n- DDVB branding integrated\n\n📊 **Validation Output:**\n- ✅ All quality checks passed\n- ⚠️ Failed checks with details\n\n📲 **Delivery:**\nHumanized Russian case study sent to Telegram with validation results\n\n🎉 **Final Output:**\nPublication-ready case study for Russian media!"
+        "width": 340
       },
-      "id": "note-validation",
-      "name": "Quality Validation & Delivery",
+      "id": "4a2859df-b061-46bd-be19-c68bab221a98",
+      "name": "Telegram Delivery",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        3520,
-        540
+        896,
+        400
       ]
     }
   ],
+  "pinData": {},
   "connections": {
     "Telegram Trigger": {
       "main": [
@@ -535,17 +498,6 @@
       ]
     },
     "Fetch Generation Prompt": {
-      "main": [
-        [
-          {
-            "node": "Fetch Russian Translation Prompt",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fetch Russian Translation Prompt": {
       "main": [
         [
           {
@@ -629,36 +581,25 @@
       "main": [
         [
           {
-            "node": "Generate English Case Study",
+            "node": "Generate Russian Case Study",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Generate English Case Study": {
+    "Generate Russian Case Study": {
       "main": [
         [
           {
-            "node": "Extract English Case Study",
+            "node": "Extract Russian Case Study",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Extract English Case Study": {
-      "main": [
-        [
-          {
-            "node": "Translate to Russian",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Translate to Russian": {
+    "Extract Russian Case Study": {
       "main": [
         [
           {
@@ -695,6 +636,17 @@
       "main": [
         [
           {
+            "node": "Split Message for Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Message for Telegram": {
+      "main": [
+        [
+          {
             "node": "Send to Telegram",
             "type": "main",
             "index": 0
@@ -703,7 +655,15 @@
       ]
     }
   },
+  "active": false,
   "settings": {
     "executionOrder": "v1"
-  }
+  },
+  "versionId": "3829178d-b2f3-4dc3-b31d-cafd07206a58",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c43650aac784c0350f3118d77384bbe7d5304d048a958ee218cafcaff1cce473"
+  },
+  "id": "aPM5GDqeyIuJPHCv",
+  "tags": []
 }
