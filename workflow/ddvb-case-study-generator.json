@@ -353,6 +353,90 @@
           "name": "Telegram API"
         }
       }
+    },
+    {
+      "parameters": {
+        "height": 340,
+        "width": 380,
+        "content": "## 1. Set Up API Credentials\n\n**Get API Keys:**\n\n1. **OpenAI API Key:**\n   - Go to [OpenAI Platform](https://platform.openai.com/api-keys)\n   - Create new API key\n   - Ensure GPT-4o model access\n   - Add funds to billing account\n\n2. **Perplexity API Key:**\n   - Go to [Perplexity Settings](https://www.perplexity.ai/settings/api)\n   - Generate API key\n   - Add to n8n credentials\n\n3. **Telegram Bot Token:**\n   - Message @BotFather on Telegram\n   - Use `/newbot` command\n   - Copy bot token\n   - Add to n8n Telegram credentials"
+      },
+      "id": "note-setup-credentials",
+      "name": "Setup API Credentials",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [120, -100]
+    },
+    {
+      "parameters": {
+        "height": 280,
+        "width": 380,
+        "content": "## 2. Russian Input Format\n\n**Send Case Study Request in Russian:**\n\n✅ **Required Information:**\n- Client name and industry\n- Project type (branding, rebranding, packaging, etc.)\n- Target publication (Sostav.ru, Forbes Russia, etc.)\n- Business results/metrics\n\n📝 **Example Message:**\n```\nСоздай кейс DDVB для Sostav.ru о \nребрендинге пивоварни \"Хмель & Солод\".\nПродажи выросли на 45% после запуска \nновой айдентики от DDVB.\n```\n\n💡 **Tip:** More details = better case study!"
+      },
+      "id": "note-input-format",
+      "name": "Russian Input Requirements",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [560, -20]
+    },
+    {
+      "parameters": {
+        "height": 260,
+        "width": 360,
+        "content": "## 3. Research Phase\n\n**Perplexity AI Research:**\n\n🔍 **What it does:**\n- Translates Russian request to English\n- Researches company background\n- Analyzes industry context\n- Identifies competitive landscape\n- Finds potential project drivers\n\n📊 **Output Format:**\n- Company background\n- Brand & market context\n- Industry insights\n- Business drivers\n\n⏱️ **Typical duration:** 5-10 seconds"
+      },
+      "id": "note-research-phase",
+      "name": "Research Phase",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [880, -60]
+    },
+    {
+      "parameters": {
+        "height": 320,
+        "width": 380,
+        "content": "## 4. English Generation\n\n**OpenAI GPT-4o Case Study Generation:**\n\n📝 **Process:**\n- Accepts Russian input + research context\n- Generates complete case study in English\n- Follows SITUATION-TASK-SOLUTION structure\n- Creates client & agency quotes (500-700 chars)\n- Integrates DDVB branding naturally\n\n✨ **Why English First?**\n- Better AI quality and consistency\n- Superior quote generation\n- Cleaner narrative structure\n- Professional translation in next step\n\n📄 **Output:** Complete English case study with:\n- Title & subtitle\n- Main text (SITUATION-TASK-SOLUTION)\n- Client & agency quotes\n- Team composition\n- SEO metadata"
+      },
+      "id": "note-english-generation",
+      "name": "English Generation Process",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1440, -20]
+    },
+    {
+      "parameters": {
+        "height": 320,
+        "width": 360,
+        "content": "## 5. Russian Translation\n\n**Professional Translation with Standards:**\n\n🇷🇺 **Russian Media Standards:**\n- Title ≤ 90 characters, active voice\n- СИТУАЦИЯ-ЗАДАЧА-РЕШЕНИЕ structure\n- Proper quotation marks: «кавычки»\n- Em-dashes (—) for emphasis\n- Numbers: 10 000 (with space)\n- Eliminates канцелярит\n\n📚 **Terminology:**\n- Branding → брендинг\n- Rebranding → ребрендинг\n- Brand identity → айдентика\n- Naming → нейминг\n- Packaging → упаковка\n\n✅ **Result:** Publication-ready Russian text following Sostav.ru, Forbes Russia, RBC standards"
+      },
+      "id": "note-translation",
+      "name": "Russian Translation Standards",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [2000, 0]
+    },
+    {
+      "parameters": {
+        "height": 280,
+        "width": 340,
+        "content": "## 6. AI Humanization\n\n**Remove AI Patterns:**\n\n🎯 **Purpose:**\nMake Russian text sound natural and human-written, not AI-generated\n\n🔧 **Techniques:**\n- Remove robotic phrasing\n- Vary sentence structures\n- Eliminate bureaucratic language\n- Add natural flow and transitions\n- Use industry insider voice\n\n✅ **Preserves:**\n- All facts and metrics\n- DDVB branding\n- Russian media standards\n- Client & agency quotes\n- Team composition\n\n💡 **Result:** Natural, publication-ready Russian text"
+      },
+      "id": "note-humanization",
+      "name": "AI Humanization Process",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [2080, 560]
+    },
+    {
+      "parameters": {
+        "height": 300,
+        "width": 340,
+        "content": "## 7. Quality Validation\n\n**Automated Quality Checks:**\n\n✅ **Validates:**\n- Russian text present (Cyrillic)\n- Both quotes included (client + agency)\n- Proper quotation marks «кавычки»\n- Title present and formatted\n- Length: 1,500-4,000 characters\n- DDVB branding integrated\n\n📊 **Validation Output:**\n- ✅ All quality checks passed\n- ⚠️ Failed checks with details\n\n📲 **Delivery:**\nHumanized Russian case study sent to Telegram with validation results\n\n🎉 **Final Output:**\nPublication-ready case study for Russian media!"
+      },
+      "id": "note-validation",
+      "name": "Quality Validation & Delivery",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [2500, 560]
     }
   ],
   "connections": {
