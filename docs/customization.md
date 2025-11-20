@@ -105,26 +105,38 @@ This context positions DDVB as an industry leader.
 **In "OpenAI Case Study Generation" node:**
 
 ```json
-"temperature": 0.8  // Default
+"temperature": 0.8  // Default (for GPT-4, GPT-4o)
 
-// Options:
+// Options for GPT-4/GPT-4o:
 0.3-0.5: More consistent, predictable output
 0.6-0.8: Balanced creativity and consistency (recommended)
 0.9-1.2: More creative, varied output (may be less consistent)
 ```
 
-**Recommendation:** Start with 0.8, adjust based on output quality.
+⚠️ **Important for GPT-5 Models:**
+- GPT-5 (o1-preview, o1-mini) **only supports** `temperature: 1` (the default)
+- Using any other temperature value (e.g., 0.8, 0.7) will cause a "Bad request" error
+- GPT-5 models do not allow temperature customization
+
+**Recommendation:** 
+- For GPT-4/GPT-4o: Start with 0.8, adjust based on output quality
+- For GPT-5: Must use `temperature: 1` (fixed value)
 
 ### Changing Max Tokens
 
 ```json
-"max_tokens": 4000  // Default
+"max_tokens": 4000  // Default (for GPT-4, GPT-4o)
 
 // Adjust based on needs:
 2000-3000: Shorter case studies
 3000-4000: Standard length (recommended)
 4000-6000: Longer, detailed case studies
 ```
+
+⚠️ **Important for GPT-5 Models:**
+- GPT-5 (o1-preview, o1-mini) uses `max_completion_tokens` instead of `max_tokens`
+- Using `max_tokens` with GPT-5 will cause a "Bad request" error
+- Example: `"max_completion_tokens": 8000` (recommended for GPT-5)
 
 ⚠️ **Note:** Higher token counts = higher API costs
 
