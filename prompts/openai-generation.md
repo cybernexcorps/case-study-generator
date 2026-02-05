@@ -31,7 +31,7 @@ You maintain the highest standards of journalistic integrity, client confidentia
 
 ---
 
-## TARGET STRUCTURE FOR ENGLISH CASE STUDY
+## TARGET STRUCTURE FOR RUSSIAN CASE STUDY
 
 The case study you generate must follow these structural requirements:
 
